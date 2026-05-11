@@ -12,7 +12,7 @@ end
 
 local function CheckTSM()
 	if not TSM_API then
-		return false, "TSM_API global not present"
+		return false, "TSM not loaded"
 	end
 	if type(TSM_API.IsUIVisible) ~= "function" then
 		return false, "TSM_API.IsUIVisible missing"
@@ -22,12 +22,13 @@ local function CheckTSM()
 	end
 	return true
 end
+TSMVFP.HasTSM = CheckTSM
 
 local function OnMerchantShow()
 	local n = GetMerchantNumItems() or 0
 	local tsmOk = CheckTSM()
 	local tsmVisible = tsmOk and TSM_API.IsUIVisible("VENDORING") or false
-	Log("MERCHANT_SHOW — %d items, TSM_API=%s, TSM vendoring visible=%s",
+	Log("MERCHANT_SHOW — %d items, TSM=%s, TSM vendoring visible=%s",
 		n, tostring(tsmOk), tostring(tsmVisible))
 end
 
@@ -43,9 +44,9 @@ end
 local function OnPlayerLogin()
 	local ok, err = CheckTSM()
 	if ok then
-		Log("loaded — TSM_API ready")
+		Log("loaded — TSM integration active")
 	else
-		Log("loaded — WARNING: %s", err)
+		Log("loaded — %s; group filter disabled, all other filters available", err)
 	end
 end
 
@@ -71,7 +72,7 @@ SlashCmdList["TSMVFP"] = function(msg)
 	msg = (msg or ""):lower():match("^%s*(.-)%s*$")
 	if msg == "" or msg == "status" then
 		local ok, err = CheckTSM()
-		Log("status — TSM_API=%s%s", tostring(ok), ok and "" or (" ("..err..")"))
+		Log("status — TSM=%s%s", tostring(ok), ok and "" or (" ("..err..")"))
 		if MerchantFrame and MerchantFrame:IsShown() then
 			Log("  MerchantFrame shown, %d items", GetMerchantNumItems() or 0)
 			if ok then
@@ -83,7 +84,7 @@ SlashCmdList["TSMVFP"] = function(msg)
 	elseif msg == "groups" then
 		local ok = CheckTSM()
 		if not ok then
-			Log("TSM_API unavailable")
+			Log("TSM not loaded — group filter unavailable")
 			return
 		end
 		local groups = {}

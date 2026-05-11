@@ -28,9 +28,10 @@ Only the text-search box is functional. There is no way to filter by quality, it
 2. Filter by **item class / subclass** (Armor/Weapon/Consumable/Trade Goods/Recipe/…).
 3. Filter by **item level range** (min / max).
 4. Filter by **required character level**.
-5. Filter by **TSM group membership** (the unique value-add — no other vendor-filter addon can do this).
+5. Filter by **TSM group membership** (the unique value-add — no other vendor-filter addon can do this). Active only when TSM is loaded.
 6. Toggle "**can afford only**" (gold + extended cost currencies).
 7. Work alongside TSM without modifying or forking it.
+8. **Function standalone without TSM.** TSM is the primary integration target (and the headline feature), but is a soft dependency. With no TSM loaded: filters F1–F4, F6, F8 still work; F5 (group) is hidden. The addon attaches to `MerchantFrame` only.
 
 ### Non-goals
 - Replacing TSM's vendor UI.
@@ -80,9 +81,11 @@ Three escape hatches were considered and rejected:
 
 **Side-tab + slide-out panel.** Visual idiom borrowed from Clique and WhatsTraining: a small tab juts out of the left edge of the active vendor frame; clicking it expands a filter panel to the left. The tab persists on the frame; the panel is hidden by default and remembered per-character.
 
-**Both vendor frames are always present.** TSM's vendor window doesn't *hide* `MerchantFrame` — it covers it. So the question isn't "which frame exists" but "which frame is on top right now." When `TSM_API.IsUIVisible("VENDORING")` is true, our tab anchors to TSM's vendor frame; otherwise it anchors to `MerchantFrame`. The tab itself migrates between anchors as visibility flips.
+**Both vendor frames are always present (when TSM is loaded).** TSM's vendor window doesn't *hide* `MerchantFrame` — it covers it. So the question isn't "which frame exists" but "which frame is on top right now." When `TSM_API.IsUIVisible("VENDORING")` is true, our tab anchors to TSM's vendor frame; otherwise it anchors to `MerchantFrame`. The tab itself migrates between anchors as visibility flips.
 
-Data comes from WoW's native merchant API (`GetMerchantNumItems`, `GetMerchantItemLink`, `GetMerchantItemInfo`), not TSM's scanner DB. Purchases go through `BuyMerchantItem(index, qty)` directly. Group filter uses `TSM_API.GetGroupPathByItem`.
+**Without TSM loaded**, the addon falls back to `MerchantFrame` as the only anchor. The group dropdown is hidden; all other filters work identically. This is enforced once at load (`CheckTSM()`) — there's no runtime mode switching.
+
+Data comes from WoW's native merchant API (`GetMerchantNumItems`, `GetMerchantItemLink`, `GetMerchantItemInfo`), not TSM's scanner DB. Purchases go through `BuyMerchantItem(index, qty)` directly. Group filter uses `TSM_API.GetGroupPathByItem` and is the only feature that touches `TSM_API`.
 
 ## 4. Architecture
 
@@ -260,7 +263,7 @@ Theme.GetColors()     -- { bg, border, text, textHighlight, textDisabled, qualit
 | F4 | Item subclass | `GetItemInfoInstant(itemID)` | P1 | Nested under class dropdown. |
 | F5 | Item level range | `select(4, GetItemInfo)` | P1 | Async; gated until item info resolves. |
 | F6 | Required level max | `select(5, GetItemInfo)` | P1 | |
-| F7 | TSM group | `TSM_API.GetGroupPathByItem` | P0 | **The unique value-add.** Vertical-slice + 1. |
+| F7 | TSM group | `TSM_API.GetGroupPathByItem` | P0 (TSM required) | **The unique value-add.** Vertical-slice + 1. Dropdown hidden if TSM not loaded. |
 | F8 | Can afford only | `GetMoney()` + currency reads | P2 | Extended cost items make this nontrivial; defer to v0.4. |
 | F9 | "Not in bags" | `TSM_API.GetBagQuantity` | P3 | Convenience for collectors / re-stockers. |
 
@@ -343,5 +346,6 @@ P0 ships in v0.1 vertical slice. P1 in v0.2. P2+ in v0.3+.
 - Click an item's Buy button, get the item, gold goes down, panel refreshes.
 - Close the merchant → tab + panel hide. Re-open another merchant → tab + panel reappear with last filter state.
 - No errors in BugSack/BugGrabber across a 20-minute vendor session at three different vendors (general goods, reagent vendor, faction quartermaster).
+- **No-TSM smoke test:** disable TSM in the addons menu, reload, open a vendor — tab + panel appear on `MerchantFrame`, quality filter works, group dropdown is absent, no errors.
 
 That's the bar. Everything past that is fan-out and polish.

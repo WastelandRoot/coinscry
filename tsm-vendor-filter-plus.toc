@@ -1,11 +1,11 @@
 ## Interface: 20505
 ## Title: TSM-VFP — Vendor Filter Plus
-## Notes: Companion addon for TradeSkillMaster: adds quality, class, item-level, and TSM-group filters to vendor browsing.
+## Notes: Adds quality, class, item-level, and (with TSM) group filters to vendor browsing. Best paired with TradeSkillMaster.
 ## Author: wastelandroot
 ## Version: 0.0.1
 ## X-Category: Auctions
 ## X-License: MIT
-## RequiredDeps: TradeSkillMaster
+## OptionalDeps: TradeSkillMaster
 ## SavedVariables: TSMVFPDB
 ## SavedVariablesPerCharacter: TSMVFPCharDB
 

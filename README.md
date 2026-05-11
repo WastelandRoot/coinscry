@@ -1,13 +1,13 @@
 # tsm-vendor-filter-plus
 
-Companion addon for [TradeSkillMaster](https://www.tradeskillmaster.com/) that adds real item filters to the Vendoring → Buy UI.
+Vendor-browsing filters for World of Warcraft TBC Anniversary. Built primarily as a companion for [TradeSkillMaster](https://www.tradeskillmaster.com/), but works standalone too.
 
-TSM ships the filter button as a stub (`-- TODO`), so vendor browsing is text-search only. This addon fills in the gap with quality, item-class, item-level, and TSM-group filters.
+TSM ships its vendor filter button as a stub (`-- TODO`), so vendor browsing on TSM is text-search only. This addon fills in the gap with quality, item-class, item-level filters — and, when TSM is loaded, **TSM-group filtering** (the unique value-add).
 
 ## Target
 
 - World of Warcraft **TBC Anniversary** client (Interface `20505`).
-- Requires `TradeSkillMaster` installed.
+- `TradeSkillMaster` is recommended (enables the group filter and the dual-anchor UI) but **not required**. Without TSM, the addon attaches to the standard Blizzard merchant window and provides all non-group filters.
 
 ## Status
 
