@@ -149,6 +149,16 @@ SlashCmdList["TSMVFP"] = function(msg)
 		if NS.UI and NS.UI.Anchor then
 			print(NS.UI.Anchor.DumpFrames())
 		end
+	elseif msg == "trace" or msg == "trace on" then
+		if NS.UI and NS.UI.Anchor then
+			NS.UI.Anchor.SetVerbose(true)
+			Log("anchor tracing ON")
+		end
+	elseif msg == "trace off" then
+		if NS.UI and NS.UI.Anchor then
+			NS.UI.Anchor.SetVerbose(false)
+			Log("anchor tracing OFF")
+		end
 	elseif msg == "scan" then
 		if not (MerchantFrame and MerchantFrame:IsShown()) then
 			Log("no merchant open")

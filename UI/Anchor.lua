@@ -79,9 +79,24 @@ local function NotifyChanged()
 	end
 end
 
+local verbose = false
+function Anchor.SetVerbose(v) verbose = v and true or false end
+
+local function DescribeFrame(f)
+	if not f then return "nil" end
+	local name = (f.GetName and f:GetName()) or "<unnamed>"
+	local visible = (f.IsShown and f:IsShown()) and "shown" or "hidden"
+	local cx, cy = nil, nil
+	if f.GetCenter then cx, cy = f:GetCenter() end
+	return ("%s [%s, center=(%s,%s)]"):format(name, visible, tostring(cx and math.floor(cx)), tostring(cy and math.floor(cy)))
+end
+
 local function Reattach()
 	local desired = PickAnchor()
 	if desired == currentAnchor then return end
+	if verbose then
+		print(("|cff66ccffTSM-VFP|r anchor: %s -> %s"):format(DescribeFrame(currentAnchor), DescribeFrame(desired)))
+	end
 	currentAnchor = desired
 	NotifyChanged()
 end
