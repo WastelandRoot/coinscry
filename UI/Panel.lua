@@ -258,3 +258,6 @@ end
 function Panel.IsShown()
 	return panelFrame and panelFrame:IsShown()
 end
+
+function Panel.GetState() return state end
+function Panel.GetFilteredCount() return #filteredOut end

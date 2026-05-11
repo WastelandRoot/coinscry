@@ -106,7 +106,62 @@ SlashCmdList["TSMVFP"] = function(msg)
 		Log("groups (%d):", #groups)
 		for i = 1, math.min(#groups, 10) do print("    " .. groups[i]) end
 		if #groups > 10 then print("    ... +" .. (#groups - 10) .. " more") end
+	elseif msg == "debug" then
+		if not (MerchantFrame and MerchantFrame:IsShown()) then
+			Log("no merchant open")
+			return
+		end
+		local Panel = NS.UI and NS.UI.Panel
+		local s = Panel and Panel.GetState and Panel.GetState() or nil
+		Log("debug — panel state: qualityMin=%s, groupPath=%s, nameSubstring=%s",
+			tostring(s and s.qualityMin), tostring(s and s.groupPath), tostring(s and s.nameSubstring))
+		if not s then Log("  panel never opened yet"); return end
+		local rows = NS.Scanner.GetRows()
+		Log("  scanner has %d rows; testing each row against state:", #rows)
+		local matched = 0
+		for i, row in ipairs(rows) do
+			local quietQuality = (s.qualityMin == nil) or (row.quality and row.quality >= s.qualityMin)
+			local quietGroup = (s.groupPath == nil) or (row.groupPath == s.groupPath)
+			local pass = quietQuality and quietGroup
+			if pass then matched = matched + 1 end
+			-- only print interesting ones (matches + group-mismatches if a group filter is active)
+			if pass or (s.groupPath ~= nil) then
+				print(("    %d. %s — row.groupPath=%s (type=%s), state.groupPath=%s (type=%s), match=%s")
+					:format(i, row.name or "?",
+						tostring(row.groupPath), type(row.groupPath),
+						tostring(s.groupPath), type(s.groupPath),
+						tostring(pass)))
+			end
+			if i >= 20 then break end
+		end
+		Log("  matched=%d, filteredOut length=%d", matched, Panel.GetFilteredCount and Panel.GetFilteredCount() or -1)
+	elseif msg == "scan" then
+		if not (MerchantFrame and MerchantFrame:IsShown()) then
+			Log("no merchant open")
+			return
+		end
+		if NS.Scanner then NS.Scanner.Rescan() end
+		local rows = NS.Scanner and NS.Scanner.GetRows() or {}
+		Log("scan — %d rows:", #rows)
+		local tsm = CheckTSM()
+		for i, row in ipairs(rows) do
+			local groupRepr
+			if not tsm then
+				groupRepr = "(no TSM)"
+			elseif row.groupPath then
+				groupRepr = "group=|cff00ff00" .. row.groupPath .. "|r"
+			elseif row.itemString then
+				groupRepr = "group=nil (itemString=" .. row.itemString .. ")"
+			else
+				groupRepr = "group=nil (itemString=nil; link=" .. tostring(row.link) .. ")"
+			end
+			print(("  %d. %s — %s"):format(i, row.name or "?", groupRepr))
+			if i >= 20 then
+				print(("  ... +%d more"):format(#rows - 20))
+				break
+			end
+		end
 	else
-		Log("usage: /tvfp [toggle|status|groups]")
+		Log("usage: /tvfp [toggle|status|groups|scan]")
 	end
 end
