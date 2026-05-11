@@ -51,6 +51,25 @@ local function FindTSMVendoringFrame()
 	return nil
 end
 
+---@return string detailed snapshot of detection at this moment (for /tvfp poll)
+function Anchor.Probe()
+	local lines = { "anchor probe:" }
+	local tsmOk = NS.HasTSM and NS.HasTSM()
+	lines[#lines + 1] = "  HasTSM: " .. tostring(tsmOk)
+	if tsmOk and TSM_API and TSM_API.IsUIVisible then
+		lines[#lines + 1] = "  TSM_API.IsUIVisible(VENDORING): " .. tostring(TSM_API.IsUIVisible("VENDORING"))
+	end
+	lines[#lines + 1] = "  MerchantFrame:IsShown(): " .. tostring(MerchantFrame and MerchantFrame:IsShown())
+	local tsmFrame = FindTSMVendoringFrame()
+	lines[#lines + 1] = "  FindTSMVendoringFrame -> " .. (tsmFrame and (tsmFrame:GetName() or "?") or "nil")
+	local picked = PickAnchor()
+	lines[#lines + 1] = "  PickAnchor -> " .. (picked and (picked:GetName() or "?") or "nil")
+	lines[#lines + 1] = "  pollTicker active: " .. tostring(pollTicker ~= nil)
+	lines[#lines + 1] = "  Reattach call count: " .. tickCount
+	lines[#lines + 1] = "  current anchor: " .. (currentAnchor and (currentAnchor:GetName() or "?") or "nil")
+	return table.concat(lines, "\n")
+end
+
 ---@return string a multi-line dump of TSM application frames (for /tvfp dump)
 function Anchor.DumpFrames()
 	local lines = { "TSM application frames (visible, name matches TSM_FRAME:LargeApplicationFrame:):" }
@@ -80,7 +99,9 @@ local function NotifyChanged()
 end
 
 local verbose = false
+local tickCount = 0
 function Anchor.SetVerbose(v) verbose = v and true or false end
+function Anchor.GetTickCount() return tickCount end
 
 local function DescribeFrame(f)
 	if not f then return "nil" end
@@ -92,6 +113,7 @@ local function DescribeFrame(f)
 end
 
 local function Reattach()
+	tickCount = tickCount + 1
 	local desired = PickAnchor()
 	if desired == currentAnchor then return end
 	if verbose then

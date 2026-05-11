@@ -149,6 +149,10 @@ SlashCmdList["TSMVFP"] = function(msg)
 		if NS.UI and NS.UI.Anchor then
 			print(NS.UI.Anchor.DumpFrames())
 		end
+	elseif msg == "poll" then
+		if NS.UI and NS.UI.Anchor then
+			print(NS.UI.Anchor.Probe())
+		end
 	elseif msg == "trace" or msg == "trace on" then
 		if NS.UI and NS.UI.Anchor then
 			NS.UI.Anchor.SetVerbose(true)
