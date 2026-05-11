@@ -78,7 +78,11 @@ Three escape hatches were considered and rejected:
 
 ### Adopted approach
 
-**Companion overlay addon.** A floating filter panel that anchors near (not inside) the active vendor UI — TSM's when it's open, Blizzard's `MerchantFrame` when it's not — and feeds a filtered buy list. Items come from WoW's native merchant API (`GetMerchantNumItems`, `GetMerchantItemLink`, `GetMerchantItemInfo`), not TSM's scanner DB. Purchases go through `BuyMerchantItem(index, qty)` directly. Group filter uses `TSM_API.GetGroupPathByItem`.
+**Side-tab + slide-out panel.** Visual idiom borrowed from Clique and WhatsTraining: a small tab juts out of the left edge of the active vendor frame; clicking it expands a filter panel to the left. The tab persists on the frame; the panel is hidden by default and remembered per-character.
+
+**Both vendor frames are always present.** TSM's vendor window doesn't *hide* `MerchantFrame` — it covers it. So the question isn't "which frame exists" but "which frame is on top right now." When `TSM_API.IsUIVisible("VENDORING")` is true, our tab anchors to TSM's vendor frame; otherwise it anchors to `MerchantFrame`. The tab itself migrates between anchors as visibility flips.
+
+Data comes from WoW's native merchant API (`GetMerchantNumItems`, `GetMerchantItemLink`, `GetMerchantItemInfo`), not TSM's scanner DB. Purchases go through `BuyMerchantItem(index, qty)` directly. Group filter uses `TSM_API.GetGroupPathByItem`.
 
 ## 4. Architecture
 
@@ -113,23 +117,28 @@ tsm-vendor-filter-plus.toc           -- single-flavor, Interface 20505
 Core.lua                              -- addon entry, event dispatch, slash commands
 Scanner.lua                           -- reads merchant items via WoW API, caches per session
 Filters.lua                           -- pure filter predicates (quality, ilvl, class, group, …)
-UI/Panel.lua                          -- floating frame, dropdowns, scroll list
-UI/Anchor.lua                         -- finds & follows TSM's vendor frame or MerchantFrame
+UI/Tab.lua                            -- the side tab (button) that lives on the vendor frame
+UI/Panel.lua                          -- the slide-out panel: dropdowns + scroll list
+UI/Anchor.lua                         -- decides which frame the tab/panel attach to (TSM vs MerchantFrame)
+UI/Themes/Default.lua                 -- vanilla Blizzard skin (backdrop, fonts, textures)
+UI/Themes/ElvUI.lua                   -- ElvUI skin (StripTextures + Backdrop) — loaded only if ElvUI present
 Util/ItemCache.lua                    -- async resolves item info (GetItemInfo queue)
 Saved.lua                             -- SavedVariables shape + migration
 ```
 
 ### Event flow
 
-1. **`MERCHANT_SHOW`** fires → `Scanner.Rescan()` builds in-memory list of `{ index, itemLink, itemString, price, stackSize, numAvailable, costItems }`.
+1. **`MERCHANT_SHOW`** fires → `Scanner.Rescan()` builds in-memory list of `{ index, itemLink, itemString, price, stackSize, numAvailable, costItems }`. `Anchor.Reattach()` runs to place the tab on the right frame.
 2. **`MERCHANT_UPDATE`** fires → re-scan (vendor inventory can change, e.g., after buying limited-supply items).
-3. Each row, when not yet resolved, queues a `GetItemInfo(itemID)` call. `GET_ITEM_INFO_RECEIVED` events trigger a refresh of any unresolved rows.
-4. `Anchor` polls (`OnUpdate`, throttled to ~4 Hz):
-   - If `TSM_API.IsUIVisible("VENDORING")`: find TSM's vendor frame by global frame name (TBD — research needed once installed; see §7) and anchor right of it.
-   - Else if `MerchantFrame:IsShown()`: anchor right of MerchantFrame.
-   - Else: hide our panel.
-5. Filter UI is dropdowns + a scroll list. Filter state changes → `Filters.Apply(scanResults)` → `Panel:Refresh()`.
-6. Buy button on a row → `BuyMerchantItem(row.index, qty)`. Shift-click for stack; right-click for quantity dialog.
+3. **`MERCHANT_CLOSED`** → tab + panel hide.
+4. Each row, when not yet resolved, queues a `GetItemInfo(itemID)` call. `GET_ITEM_INFO_RECEIVED` events trigger a refresh of any unresolved rows.
+5. `Anchor` listens for TSM-vendor visibility transitions. Since TSM doesn't expose an event for this, we poll via `OnUpdate` throttled to ~4 Hz **while the merchant is open**:
+   - If `TSM_API.IsUIVisible("VENDORING")` and the anchor isn't already TSM's frame: reparent the tab to TSM's frame.
+   - Else if `MerchantFrame:IsShown()` and the anchor isn't already MerchantFrame: reparent the tab to MerchantFrame.
+   - Else (merchant closed entirely): hide tab + panel, stop polling.
+6. Tab click → `Panel:Toggle()`. Panel slide direction depends on free space (left by default; right if covered by ChatFrame/etc.).
+7. Filter UI is dropdowns + a scroll list. Filter state changes → `Filters.Apply(scanResults)` → `Panel:Refresh()`.
+8. Buy button on a row → `BuyMerchantItem(row.index, qty)`. Shift-click for stack; right-click for quantity dialog.
 
 ### Data shape (in-memory)
 
@@ -171,29 +180,75 @@ ScanRow = {
 
 All filter clauses are AND-ed. Within a clause (e.g., classIDs), it's OR (any whitelisted match passes).
 
-## 5. UI sketch
+## 5. UI: side tab + slide-out panel
+
+### Idiom
+
+WhatsTraining and Clique both add a left-side tab to an existing Blizzard frame. WhatsTraining (`WhatsTrainingUI.lua:192–225`) gets it cheap by hijacking `SpellBookSkillLineTab` — a Blizzard-provided tab strip on the SpellBook frame. `MerchantFrame` exposes no such strip, so we build the tab ourselves. The closest reusable visual reference is the `PaperDollSidebar`-style tab (PaperDollFrame's character/inventory/skills tabs on the left edge).
+
+### Tab
+
+- A `Button` frame parented to the active vendor frame (the *anchor*; see §4).
+- Anchored `TOPRIGHT` to the anchor's `TOPLEFT`, with a small Y-offset (~-32px below the title bar).
+- Texture: a vertical "tab" graphic — 32x64ish — with our addon icon centered, rotated for the orientation. We ship our own texture in `Media/`.
+- States: normal / highlighted (on mouseover) / pushed (panel open). Tooltip on hover: "TSM-VFP — vendor filters".
+- Click → `Panel:Toggle()`.
+
+### Panel
+
+- A `Frame` parented to the tab. Anchored `TOPRIGHT` to the tab's `TOPLEFT` so it expands leftward.
+- Width ~340px; height matches anchor's height. Optional `OnUpdate` to track anchor resize (TSM's frame can be resized).
+- Layout:
 
 ```
-┌────────────────────────────────┐     ┌────────────────────────────────┐
-│  TSM Vendoring / Merchant      │     │  TSM-VFP                       │
-│  (untouched)                   │ →   │  Search: [_______________]     │
-│                                │     │  Quality: [Rare+      ▾]       │
-│                                │     │  Class:   [Armor      ▾]       │
-│                                │     │  Group:   [Vendor Buys ▾]      │
-│                                │     │  ☐ Can afford only             │
-│                                │     │  ─────────────────────────     │
-│                                │     │  [icon] Item name      1500g   │
-│                                │     │  [icon] Item name        25g   │
-│                                │     │   …                            │
-│                                │     │  [Buy 1] [Buy stack]           │
-└────────────────────────────────┘     └────────────────────────────────┘
+┌──────────────────────────────┐                   ┌──┐
+│  TSM-VFP                  [×]│                   │  │
+│  Search: [_______________]   │                   │  │
+│  Quality:  [Rare+        ▾]  │                   │T │ <— tab on the right edge
+│  Class:    [Armor        ▾]  │                   │S │     (panel sits to its left;
+│  Subclass: [Mail         ▾]  │                   │M │      tab is glued to the
+│  Group:    [Vendor Buys  ▾]  │                   │V │      anchor frame)
+│  iLvl:     [__] – [__]       │                   │F │
+│  ☐ Can afford only           │                   │P │
+│  ────────────────────────────│                   │  │
+│  [icon] Item name      1500g │                   │  │
+│  [icon] Item name        25g │                   │  │
+│   …                          │                   │  │
+└──────────────────────────────┘                   └──┘
+                                                   ↑
+                          parent vendor frame (TSM or MerchantFrame)
 ```
 
-- Panel width: ~340px. Resizable vertically.
 - Quality dropdown: "Any / Common+ / Uncommon+ / Rare+ / Epic+ / Legendary".
-- Class dropdown: lists classes present at *this* vendor (computed from scan), plus "All".
+- Class dropdown: lists classes present at *this* vendor (computed from scan), plus "All". Subclass dropdown appears when a class is selected.
 - Group dropdown: lists all TSM groups + a "Multi-select…" sub-menu.
-- Visual style: plain Blizzard frame (BackdropTemplate). No attempt to match TSM's Montserrat theme — out of reach without TSM's font/icon registry, and matching badly looks worse than not matching at all.
+- Item row: `[icon] [name colored by quality] [price/cost]` + Buy button. Right-click → quantity dialog.
+
+### Theming
+
+We support two themes detected at load:
+
+**Default (vanilla Blizzard).** Standard `BackdropTemplate` with the "Tooltip-Border" backdrop, `GameFontNormal` fonts, native Blizzard textures for the dropdowns and scroll bar. This is the only theme that always works.
+
+**ElvUI.** Detected by `IsAddOnLoaded("ElvUI")` *and* `unpack(ElvUI)` returning the ElvUI engine table. If present, on `PLAYER_ENTERING_WORLD` we call ElvUI's skinning API: `E.Skins:HandleFrame`, `E.Skins:HandleButton`, `E.Skins:HandleScrollBar`, etc. Reference: ElvUI's own `Modules/Skins/Blizzard/Merchant.lua` shows the exact pattern for the merchant frame.
+
+Theme files (`UI/Themes/Default.lua`, `UI/Themes/ElvUI.lua`) expose the same interface:
+
+```lua
+Theme.ApplyToFrame(frame)
+Theme.ApplyToButton(button)
+Theme.ApplyToDropdown(dropdown)
+Theme.ApplyToScrollFrame(scroll)
+Theme.GetRowHeight()  -- different per theme
+Theme.GetColors()     -- { bg, border, text, textHighlight, textDisabled, qualityTints }
+```
+
+`Core.lua` picks the right theme module at load time. No runtime theme switching for v0.x — that's not worth the complexity.
+
+### What we do *not* attempt
+
+- Matching TSM's Montserrat theme. TSM's font registry is unreachable from outside (see §3), and matching badly looks worse than not matching at all. Default theme on a TSM-anchored panel will look visually distinct from TSM — acceptable.
+- Skinning support for other UI replacers (NDui, KkthnxUI, Tukui). Add later by request; the theme module interface is the extension point.
 
 ## 6. Filter list and priorities
 
@@ -213,11 +268,14 @@ P0 ships in v0.1 vertical slice. P1 in v0.2. P2+ in v0.3+.
 
 ## 7. Open questions (resolve during M0 → M1)
 
-1. **TSM vendor frame global name.** TSM creates the frame dynamically; need to identify it in-game (`/dump TSMVendoringUIFrame` etc.) for anchoring. Fallback: anchor to `MerchantFrame` always (it's hidden behind TSM's UI but its position is the same).
+1. **TSM vendor frame global name / parent reference.** TSM creates the frame dynamically; identify it in-game (`/dump` on candidate names like `TSMVendoringUIFrame`, or iterate visible top-level frames when `TSM_API.IsUIVisible("VENDORING")` flips true). Capture the discovery in `UI/Anchor.lua` as a single function with a name-fallback list.
 2. **Extended cost handling.** `BuyMerchantItem` with currency-cost items — does it trigger Blizzard's confirmation popup, or do we need to call `MerchantFrame_ConfirmExtendedItemCost`? Test in-game.
 3. **`numAvailable` semantics in TBC.** Confirm `-1` means unlimited (as TSM treats it) vs. some other value on Anniversary realms.
 4. **Group filter scale.** If user has 200+ groups, the dropdown UX needs a search field or hierarchical tree. Defer; punt if first user has <30 groups.
 5. **Coexistence with `VendorFilter` addon.** Either disable our panel when `VendorFilter`'s dropdown is set to anything other than "ALL," or do nothing (let them stack). Decide after v0.1 testing.
+6. **TSM frame title-bar height.** Y-offset for the tab depends on the anchor frame's title-bar/header height, which differs between TSM's frame and MerchantFrame. Pull from the anchor at attach time rather than hard-coding.
+7. **Tab graphic.** Ship a placeholder 32×64 texture in M0; revisit asset quality in M3 polish. WhatsTraining's `left.blp` / `right.blp` are usable references for proportions.
+8. **ElvUI skin re-application.** ElvUI's skinning happens on `PLAYER_ENTERING_WORLD`. If our panel is created after that (lazy on first merchant open), we need to apply the skin directly. Wrap skin calls in a one-shot helper.
 
 ## 8. Milestones
 
@@ -230,17 +288,19 @@ P0 ships in v0.1 vertical slice. P1 in v0.2. P2+ in v0.3+.
 ### M1 — Vertical slice (1–2 days)
 - `Scanner.lua` builds the in-memory row list.
 - `Util/ItemCache.lua` async-resolves item info.
-- `Panel.lua` floats a basic frame with:
+- `UI/Tab.lua` creates the side tab anchored to `MerchantFrame` (TSM frame discovery deferred to M2).
+- `UI/Panel.lua` slides out with:
   - Quality dropdown (F2)
   - Group dropdown (F7)
   - Scrollable filtered list with Buy buttons
-- `Anchor.lua` attaches panel to `MerchantFrame` (TSM frame name discovery deferred to M2).
-- **Verifies:** the hard parts (filter pipeline, TSM_API group lookup, BuyMerchantItem) all work end-to-end with two filters. If this slice ships clean, the remaining work is fan-out.
+- `UI/Themes/Default.lua` only — ElvUI deferred to M2.
+- **Verifies:** the hard parts (filter pipeline, TSM_API group lookup, BuyMerchantItem, tab/panel anchoring) all work end-to-end with two filters and one anchor. If this slice ships clean, the remaining work is fan-out.
 
-### M2 — Filter fan-out (1 day)
+### M2 — Filter fan-out + TSM anchor + ElvUI (1.5 days)
 - F1 (text search), F3 (class), F4 (subclass), F5 (item level), F6 (required level).
-- Anchor to TSM vendor frame when visible (resolve open question #1).
-- SavedVariables: remember last filter state per-character.
+- `UI/Anchor.lua` migrates the tab to TSM's vendor frame when `TSM_API.IsUIVisible("VENDORING")` is true (resolve open question #1).
+- `UI/Themes/ElvUI.lua` implementation; theme picked at load.
+- SavedVariables: remember last filter state per-character + panel open/closed state + which side the panel expands toward.
 
 ### M3 — Polish (0.5 day)
 - F8 "can afford only" with extended-cost handling.
@@ -258,7 +318,9 @@ P0 ships in v0.1 vertical slice. P1 in v0.2. P2+ in v0.3+.
 | Risk | Likelihood | Mitigation |
 |---|---|---|
 | TSM removes `GetGroupPathByItem` or breaks `TSM_API`. | Low (it's their stable public API). | Pin behavior behind a feature check at load; degrade gracefully if missing. |
-| TSM's vendor frame's name/position changes across versions. | Medium. | Anchor to `MerchantFrame` by default; opt-in TSM-frame anchoring via slash. |
+| TSM's vendor frame's name/position changes across versions. | Medium. | Discover at runtime with a fallback list; if not found, the tab stays on `MerchantFrame` (visible underneath TSM, so still reachable). |
+| ElvUI's skinning API breaks our calls (rename, signature change). | Low–medium. | All ElvUI calls go through `UI/Themes/ElvUI.lua`; wrap each in `pcall` and fall back to the default theme silently if a skin call errors. |
+| Tab graphic clashes with ElvUI's flatter aesthetic. | Medium. | Provide two textures (one beveled-classic, one flat) and pick per theme. |
 | Extended-cost items behave unexpectedly with `BuyMerchantItem`. | Medium. | Test on real vendor (e.g., Honor Hold quartermaster) during M1; reuse VendorFilter's `BuyMerchantItem` strategy as reference. |
 | Long item-info resolution makes filters feel laggy on first vendor open. | Medium. | Show items as soon as `GetItemInfoInstant` returns (class/subclass sync); update rows when `GET_ITEM_INFO_RECEIVED` fills in details. Sort stability matters here. |
 | User's existing `VendorFilter` and this addon both modify the merchant flow. | Low (different frames, but overlap if `VendorFilter` is set to "ALL"). | Document coexistence; possibly detect at load and warn. |
@@ -274,10 +336,12 @@ P0 ships in v0.1 vertical slice. P1 in v0.2. P2+ in v0.3+.
 ## 11. Definition of "v0.1 done"
 
 - Load the addon at a vendor with TSM open.
-- Open the panel via `/tvfp`.
-- Set Quality = Rare+, see only rare+ items.
+- A side tab is visible on `MerchantFrame` (TSM frame anchoring lands in M2 — not blocking v0.1).
+- Click the tab → panel slides out, filter controls visible.
+- Set Quality = Rare+, see only rare+ items in the panel's list.
 - Set Group = "<some TSM group>", see only items in that group.
 - Click an item's Buy button, get the item, gold goes down, panel refreshes.
+- Close the merchant → tab + panel hide. Re-open another merchant → tab + panel reappear with last filter state.
 - No errors in BugSack/BugGrabber across a 20-minute vendor session at three different vendors (general goods, reagent vendor, faction quartermaster).
 
 That's the bar. Everything past that is fan-out and polish.
