@@ -10,14 +10,17 @@ local Scanner = NS.Scanner
 local PANEL_W = 440
 local ROW_H = Theme.rowHeight
 local NUM_VISIBLE_ROWS = 14
-local TOP_RESERVED = 100  -- title + quality dropdown + group dropdown + padding
-local BOT_RESERVED = 30   -- hint line + padding
+local TOP_RESERVED = 156  -- title + search + 3 dropdown rows + ilvl/reqlvl row + padding
+local BOT_RESERVED = 30
 local PANEL_H = TOP_RESERVED + NUM_VISIBLE_ROWS * ROW_H + BOT_RESERVED
 
 local state = nil
 local filteredOut = {}
 
-local panelFrame, qualityDropdown, groupDropdown, scrollFrame
+local panelFrame
+local searchBox, qualityDropdown, classDropdown, subclassDropdown, groupDropdown
+local ilvlMinBox, ilvlMaxBox, reqLevelMaxBox
+local scrollFrame
 local rowWidgets = {}
 
 local QUALITY_CHOICES = {
@@ -29,6 +32,13 @@ local QUALITY_CHOICES = {
 	{ label = "Legendary",     value = 5 },
 }
 
+local function QualityLabelFor(value)
+	for _, c in ipairs(QUALITY_CHOICES) do
+		if c.value == value then return c.label end
+	end
+	return QUALITY_CHOICES[1].label
+end
+
 local function FormatPrice(copper)
 	if not copper or copper == 0 then return "" end
 	local g = math.floor(copper / 10000)
@@ -37,6 +47,12 @@ local function FormatPrice(copper)
 	if g > 0 then return ("%dg %ds %dc"):format(g, s, c) end
 	if s > 0 then return ("%ds %dc"):format(s, c) end
 	return ("%dc"):format(c)
+end
+
+local function SaveState()
+	if TSMVFPCharDB then
+		TSMVFPCharDB.filterState = state
+	end
 end
 
 local function BuyRow(row, qty)
@@ -66,9 +82,9 @@ local function CreateRow(parent, i, anchorTo)
 
 	r.name = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	r.name:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
-	r.name:SetPoint("RIGHT", r, "RIGHT", -110, 0) -- reserve ~110px for price column
+	r.name:SetPoint("RIGHT", r, "RIGHT", -110, 0)
 	r.name:SetJustifyH("LEFT")
-	r.name:SetWordWrap(false) -- auto-truncates with ellipsis when too long
+	r.name:SetWordWrap(false)
 
 	r.price = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	r.price:SetPoint("RIGHT", r, "RIGHT", -4, 0)
@@ -88,7 +104,7 @@ local function CreateRow(parent, i, anchorTo)
 		GameTooltip:Hide()
 	end)
 	r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	r:SetScript("OnClick", function(self, btn)
+	r:SetScript("OnClick", function(self)
 		if not self.dataRow then return end
 		if IsShiftKeyDown() then
 			BuyRow(self.dataRow, self.dataRow.stackCount or 1)
@@ -111,8 +127,8 @@ local function UpdateRows()
 			w.alt = (dataIdx % 2 == 0)
 			w.bg:SetColorTexture(1, 1, 1, w.alt and 0.04 or 0)
 			w.icon:SetTexture(data.texture or "Interface\\Icons\\INV_Misc_QuestionMark")
-			local r, g, b = Theme.QualityColor(data.quality)
-			w.name:SetTextColor(r, g, b)
+			local cr, cg, cb = Theme.QualityColor(data.quality)
+			w.name:SetTextColor(cr, cg, cb)
 			w.name:SetText(data.name or "...")
 			local priceText = FormatPrice(data.price)
 			if data.hasExtendedCost then
@@ -135,6 +151,10 @@ local function Refresh()
 end
 Panel.Refresh = Refresh
 
+-- ============================================================================
+-- Dropdown initializers
+-- ============================================================================
+
 local function InitQualityDropdown()
 	UIDropDownMenu_Initialize(qualityDropdown, function()
 		for _, choice in ipairs(QUALITY_CHOICES) do
@@ -145,21 +165,18 @@ local function InitQualityDropdown()
 			info.func = function()
 				state.qualityMin = choice.value
 				UIDropDownMenu_SetText(qualityDropdown, choice.label)
-				Refresh()
+				SaveState(); Refresh()
 			end
 			UIDropDownMenu_AddButton(info)
 		end
 	end)
 	UIDropDownMenu_SetWidth(qualityDropdown, 130)
-	UIDropDownMenu_SetText(qualityDropdown, QUALITY_CHOICES[1].label)
+	UIDropDownMenu_SetText(qualityDropdown, QualityLabelFor(state.qualityMin))
 end
 
 local function InitGroupDropdown()
 	local hasTSM = NS.HasTSM and NS.HasTSM() or false
-	if not hasTSM then
-		groupDropdown:Hide()
-		return
-	end
+	if not hasTSM then groupDropdown:Hide(); return end
 	UIDropDownMenu_Initialize(groupDropdown, function()
 		local info = UIDropDownMenu_CreateInfo()
 		info.text = "Any group"
@@ -168,7 +185,7 @@ local function InitGroupDropdown()
 		info.func = function()
 			state.groupPath = nil
 			UIDropDownMenu_SetText(groupDropdown, "Any group")
-			Refresh()
+			SaveState(); Refresh()
 		end
 		UIDropDownMenu_AddButton(info)
 
@@ -185,17 +202,137 @@ local function InitGroupDropdown()
 			entry.func = function()
 				state.groupPath = path
 				UIDropDownMenu_SetText(groupDropdown, path)
-				Refresh()
+				SaveState(); Refresh()
 			end
 			UIDropDownMenu_AddButton(entry)
 		end
 	end)
-	UIDropDownMenu_SetWidth(groupDropdown, 200)
-	UIDropDownMenu_SetText(groupDropdown, "Any group")
+	UIDropDownMenu_SetWidth(groupDropdown, 160)
+	UIDropDownMenu_SetText(groupDropdown, state.groupPath or "Any group")
 end
 
+local function ClassLabel(classID)
+	if not classID then return "All classes" end
+	local name = GetItemClassInfo and GetItemClassInfo(classID) or nil
+	return name or ("class " .. classID)
+end
+
+local function SubclassLabel(classID, subclassID)
+	if subclassID == nil then return "All subclasses" end
+	local name = GetItemSubClassInfo and GetItemSubClassInfo(classID, subclassID) or nil
+	return name or ("sub " .. subclassID)
+end
+
+local function InitClassDropdown()
+	UIDropDownMenu_Initialize(classDropdown, function()
+		local info = UIDropDownMenu_CreateInfo()
+		info.text = "All classes"
+		info.value = nil
+		info.checked = (state.classID == nil)
+		info.func = function()
+			state.classID = nil
+			state.subclassID = nil
+			UIDropDownMenu_SetText(classDropdown, "All classes")
+			UIDropDownMenu_SetText(subclassDropdown, "All subclasses")
+			subclassDropdown:Hide()
+			SaveState(); Refresh()
+		end
+		UIDropDownMenu_AddButton(info)
+
+		local classes = Filters.AvailableClasses(Scanner.GetRows())
+		local sortedIDs = {}
+		for cid in pairs(classes) do sortedIDs[#sortedIDs + 1] = cid end
+		table.sort(sortedIDs)
+		for _, cid in ipairs(sortedIDs) do
+			local entry = UIDropDownMenu_CreateInfo()
+			entry.text = ClassLabel(cid)
+			entry.value = cid
+			entry.checked = (state.classID == cid)
+			entry.func = function()
+				state.classID = cid
+				state.subclassID = nil
+				UIDropDownMenu_SetText(classDropdown, ClassLabel(cid))
+				UIDropDownMenu_SetText(subclassDropdown, "All subclasses")
+				subclassDropdown:Show()
+				SaveState(); Refresh()
+			end
+			UIDropDownMenu_AddButton(entry)
+		end
+	end)
+	UIDropDownMenu_SetWidth(classDropdown, 130)
+	UIDropDownMenu_SetText(classDropdown, ClassLabel(state.classID))
+end
+
+local function InitSubclassDropdown()
+	UIDropDownMenu_Initialize(subclassDropdown, function()
+		local cid = state.classID
+		if not cid then return end
+		local info = UIDropDownMenu_CreateInfo()
+		info.text = "All subclasses"
+		info.value = nil
+		info.checked = (state.subclassID == nil)
+		info.func = function()
+			state.subclassID = nil
+			UIDropDownMenu_SetText(subclassDropdown, "All subclasses")
+			SaveState(); Refresh()
+		end
+		UIDropDownMenu_AddButton(info)
+
+		local classes = Filters.AvailableClasses(Scanner.GetRows())
+		local subMap = classes[cid] or {}
+		local sortedIDs = {}
+		for sid in pairs(subMap) do sortedIDs[#sortedIDs + 1] = sid end
+		table.sort(sortedIDs)
+		for _, sid in ipairs(sortedIDs) do
+			local entry = UIDropDownMenu_CreateInfo()
+			entry.text = SubclassLabel(cid, sid)
+			entry.value = sid
+			entry.checked = (state.subclassID == sid)
+			entry.func = function()
+				state.subclassID = sid
+				UIDropDownMenu_SetText(subclassDropdown, SubclassLabel(cid, sid))
+				SaveState(); Refresh()
+			end
+			UIDropDownMenu_AddButton(entry)
+		end
+	end)
+	UIDropDownMenu_SetWidth(subclassDropdown, 160)
+	UIDropDownMenu_SetText(subclassDropdown, SubclassLabel(state.classID, state.subclassID))
+	if state.classID == nil then subclassDropdown:Hide() else subclassDropdown:Show() end
+end
+
+-- ============================================================================
+-- Numeric input helpers
+-- ============================================================================
+
+local function MakeNumberBox(parent, width)
+	local b = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+	b:SetSize(width, 18)
+	b:SetAutoFocus(false)
+	b:SetNumeric(true)
+	b:SetMaxLetters(4)
+	b:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+	b:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+	return b
+end
+
+local function ParseOptNum(text)
+	text = text and text:match("^%s*(.-)%s*$") or ""
+	if text == "" then return nil end
+	return tonumber(text)
+end
+
+-- ============================================================================
+-- Panel
+-- ============================================================================
+
 local function CreatePanel()
-	state = state or Filters.NewState()
+	state = state or (TSMVFPCharDB and TSMVFPCharDB.filterState) or Filters.NewState()
+	-- Defensive: re-key any persisted state through NewState so newer fields exist.
+	local defaults = Filters.NewState()
+	for k, v in pairs(defaults) do
+		if state[k] == nil and v ~= nil then state[k] = v end
+	end
 
 	local f = CreateFrame("Frame", "TSMVFP_Panel", UIParent, "BackdropTemplate")
 	f:SetSize(PANEL_W, PANEL_H)
@@ -203,17 +340,83 @@ local function CreatePanel()
 	Theme.ApplyToPanel(f)
 	f:EnableMouse(true)
 
+	-- Title + close button
 	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	title:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -10)
 	title:SetText("TSM-VFP")
 	title:SetTextColor(1, 0.82, 0)
 
+	local closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+	closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, -4)
+	closeBtn:SetScript("OnClick", function() Panel.Hide() end)
+
+	-- Search box
+	searchBox = CreateFrame("EditBox", "TSMVFP_SearchBox", f, "InputBoxTemplate")
+	searchBox:SetPoint("TOPLEFT", f, "TOPLEFT", 18, -34)
+	searchBox:SetPoint("TOPRIGHT", f, "TOPRIGHT", -18, -34)
+	searchBox:SetHeight(18)
+	searchBox:SetAutoFocus(false)
+	searchBox:SetMaxLetters(64)
+	searchBox:SetText(state.nameSubstring or "")
+	searchBox:SetScript("OnTextChanged", function(self)
+		state.nameSubstring = self:GetText() or ""
+		if state.nameSubstring == "" then state.nameSubstring = nil end
+		SaveState(); Refresh()
+	end)
+	searchBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+	searchBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+	local searchLabel = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	searchLabel:SetPoint("RIGHT", searchBox, "LEFT", -2, 0)
+	searchLabel:SetText("search:")
+
+	-- Row 1: Quality + Group dropdowns
 	qualityDropdown = CreateFrame("Frame", "TSMVFP_QualityDropdown", f, "UIDropDownMenuTemplate")
-	qualityDropdown:SetPoint("TOPLEFT", title, "BOTTOMLEFT", -16, -8)
-
+	qualityDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -56)
 	groupDropdown = CreateFrame("Frame", "TSMVFP_GroupDropdown", f, "UIDropDownMenuTemplate")
-	groupDropdown:SetPoint("TOPLEFT", qualityDropdown, "BOTTOMLEFT", 0, -2)
+	groupDropdown:SetPoint("TOPLEFT", qualityDropdown, "TOPRIGHT", 20, 0)
 
+	-- Row 2: Class + Subclass dropdowns (absolute Y to avoid UIDropDown internal padding surprises)
+	classDropdown = CreateFrame("Frame", "TSMVFP_ClassDropdown", f, "UIDropDownMenuTemplate")
+	classDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -86)
+	subclassDropdown = CreateFrame("Frame", "TSMVFP_SubclassDropdown", f, "UIDropDownMenuTemplate")
+	subclassDropdown:SetPoint("TOPLEFT", classDropdown, "TOPRIGHT", 20, 0)
+
+	-- Row 3: ilvl range + req level max
+	local ilvlLabel = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	ilvlLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 26, -126)
+	ilvlLabel:SetText("ilvl:")
+
+	ilvlMinBox = MakeNumberBox(f, 36)
+	ilvlMinBox:SetPoint("LEFT", ilvlLabel, "RIGHT", 6, 0)
+	ilvlMinBox:SetText(state.ilvlMin and tostring(state.ilvlMin) or "")
+	local dash = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	dash:SetPoint("LEFT", ilvlMinBox, "RIGHT", 4, 0)
+	dash:SetText("-")
+	ilvlMaxBox = MakeNumberBox(f, 36)
+	ilvlMaxBox:SetPoint("LEFT", dash, "RIGHT", 4, 0)
+	ilvlMaxBox:SetText(state.ilvlMax and tostring(state.ilvlMax) or "")
+
+	ilvlMinBox:SetScript("OnTextChanged", function(self)
+		state.ilvlMin = ParseOptNum(self:GetText())
+		SaveState(); Refresh()
+	end)
+	ilvlMaxBox:SetScript("OnTextChanged", function(self)
+		state.ilvlMax = ParseOptNum(self:GetText())
+		SaveState(); Refresh()
+	end)
+
+	local reqLabel = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	reqLabel:SetPoint("LEFT", ilvlMaxBox, "RIGHT", 18, 0)
+	reqLabel:SetText("req lvl max:")
+	reqLevelMaxBox = MakeNumberBox(f, 36)
+	reqLevelMaxBox:SetPoint("LEFT", reqLabel, "RIGHT", 6, 0)
+	reqLevelMaxBox:SetText(state.reqLevelMax and tostring(state.reqLevelMax) or "")
+	reqLevelMaxBox:SetScript("OnTextChanged", function(self)
+		state.reqLevelMax = ParseOptNum(self:GetText())
+		SaveState(); Refresh()
+	end)
+
+	-- Scroll frame + rows
 	scrollFrame = CreateFrame("ScrollFrame", "TSMVFP_ScrollFrame", f, "FauxScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -TOP_RESERVED)
 	scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, BOT_RESERVED - 6)
@@ -221,22 +424,21 @@ local function CreatePanel()
 		FauxScrollFrame_OnVerticalScroll(self, offset, ROW_H, UpdateRows)
 	end)
 
-	-- Rows live on the panel itself (NOT inside the ScrollFrame); FauxScrollFrame
-	-- is a scrollbar-only widget and does not render descendants. We position rows
-	-- over the same viewport area as the ScrollFrame and update them on scroll.
 	rowWidgets = {}
 	for i = 1, NUM_VISIBLE_ROWS do
 		rowWidgets[i] = CreateRow(f, i, scrollFrame)
 	end
 
 	local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, -8)
-	hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, -8)
+	hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 8)
+	hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 8)
 	hint:SetJustifyH("LEFT")
 	hint:SetText("click: buy 1 — shift-click: buy stack")
 
 	InitQualityDropdown()
 	InitGroupDropdown()
+	InitClassDropdown()
+	InitSubclassDropdown()
 	f:Hide()
 	return f
 end
@@ -252,6 +454,9 @@ end
 function Panel.Show()
 	if not panelFrame then return end
 	panelFrame:Show()
+	-- Re-init the class dropdowns each show in case the vendor changed.
+	if classDropdown then InitClassDropdown() end
+	if subclassDropdown then InitSubclassDropdown() end
 	Refresh()
 end
 
@@ -264,9 +469,6 @@ function Panel.Toggle()
 	if panelFrame:IsShown() then Panel.Hide() else Panel.Show() end
 end
 
-function Panel.IsShown()
-	return panelFrame and panelFrame:IsShown()
-end
-
+function Panel.IsShown() return panelFrame and panelFrame:IsShown() end
 function Panel.GetState() return state end
 function Panel.GetFilteredCount() return #filteredOut end
