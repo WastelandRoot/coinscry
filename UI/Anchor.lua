@@ -4,9 +4,11 @@ local Anchor = {}
 NS.UI.Anchor = Anchor
 
 -- TSM names its frames "TSM_FRAME:LargeApplicationFrame:<random>" and clears
--- the global, so we can't _G[] them. We iterate UIParent's children, match
--- on the name prefix, and disambiguate by position (the vendoring frame
--- covers MerchantFrame; Crafting/Mailing/etc. don't).
+-- the global, so we can't _G[] them. We iterate UIParent's children and match
+-- on the name prefix. Note: TSM positions its vendoring frame *next to*
+-- MerchantFrame (not over it), so position-based disambiguation doesn't help.
+-- TSM_API.IsUIVisible("VENDORING") is the authoritative signal that the
+-- vendoring frame is open.
 local TSM_FRAME_PATTERN = "^TSM_FRAME:LargeApplicationFrame:"
 
 local POLL_INTERVAL = 0.25
@@ -15,29 +17,54 @@ local currentAnchor = nil
 local pollTicker = nil
 local listeners = {}
 
-local function FrameCenterInside(inner, outer)
-	if not (inner and outer) then return false end
-	local cx, cy = inner:GetCenter()
-	local l, r, t, b = outer:GetLeft(), outer:GetRight(), outer:GetTop(), outer:GetBottom()
-	if not (cx and l and r and t and b) then return false end
-	return cx >= l and cx <= r and cy >= b and cy <= t
+---Returns an iterator over visible UIParent children whose name matches the
+---TSM LargeApplicationFrame pattern. Use for both detection and debug dumps.
+local function IterateTSMFrames()
+	local children = { UIParent:GetChildren() }
+	local i = 0
+	return function()
+		while true do
+			i = i + 1
+			local child = children[i]
+			if not child then return nil end
+			local name = child.GetName and child:GetName() or nil
+			if name and child.IsShown and child:IsShown() and name:find(TSM_FRAME_PATTERN) then
+				return child, name
+			end
+		end
+	end
 end
 
 local function FindTSMVendoringFrame()
 	if not (NS.HasTSM and NS.HasTSM()) then return nil end
 	if not (TSM_API and TSM_API.IsUIVisible) then return nil end
 	if not TSM_API.IsUIVisible("VENDORING") then return nil end
-	if not (MerchantFrame and MerchantFrame:IsShown()) then return nil end
 
-	for _, child in ipairs({ UIParent:GetChildren() }) do
-		local name = child.GetName and child:GetName() or nil
-		if name and child.IsShown and child:IsShown() and name:find(TSM_FRAME_PATTERN) then
-			if FrameCenterInside(child, MerchantFrame) then
-				return child
-			end
-		end
+	-- If other TSM application UIs are also visible (Crafting, Mailing, Auction),
+	-- their frames share the same name pattern. We can't disambiguate from the
+	-- outside, but the user almost never has those open at a vendor, so the
+	-- first match wins. If this becomes a real problem, a /tvfp anchor cycle
+	-- command can let the user pick.
+	for child in IterateTSMFrames() do
+		return child
 	end
 	return nil
+end
+
+---@return string a multi-line dump of TSM application frames (for /tvfp dump)
+function Anchor.DumpFrames()
+	local lines = { "TSM application frames (visible, name matches TSM_FRAME:LargeApplicationFrame:):" }
+	local count = 0
+	for child, name in IterateTSMFrames() do
+		count = count + 1
+		local w = child:GetWidth() or 0
+		local h = child:GetHeight() or 0
+		local l = child:GetLeft() or -1
+		local t = child:GetTop() or -1
+		lines[#lines + 1] = ("  %d. %s  size=%dx%d  topleft=(%.0f, %.0f)"):format(count, name, w, h, l, t)
+	end
+	if count == 0 then lines[#lines + 1] = "  (none)" end
+	return table.concat(lines, "\n")
 end
 
 ---@return Frame|nil the frame our tab + panel should attach to

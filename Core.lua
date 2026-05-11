@@ -145,6 +145,10 @@ SlashCmdList["TSMVFP"] = function(msg)
 			if i >= 20 then break end
 		end
 		Log("  matched=%d, filteredOut length=%d", matched, Panel.GetFilteredCount and Panel.GetFilteredCount() or -1)
+	elseif msg == "dump" then
+		if NS.UI and NS.UI.Anchor then
+			print(NS.UI.Anchor.DumpFrames())
+		end
 	elseif msg == "scan" then
 		if not (MerchantFrame and MerchantFrame:IsShown()) then
 			Log("no merchant open")
@@ -172,6 +176,6 @@ SlashCmdList["TSMVFP"] = function(msg)
 			end
 		end
 	else
-		Log("usage: /tvfp [toggle|status|groups|scan]")
+		Log("usage: /tvfp [toggle|status|groups|scan|dump|debug]")
 	end
 end
