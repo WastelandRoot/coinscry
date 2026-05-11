@@ -28,8 +28,11 @@ function Scanner.Rescan()
 	local n = GetMerchantNumItems() or 0
 	for i = 1, n do
 		local link = GetMerchantItemLink(i)
-		local name, texture, price, stackCount, numAvailable, isUsable, extendedCost =
+		local name, texture, price, stackCount, numAvailable, isUsable =
 			GetMerchantItemInfo(i)
+		-- GetMerchantItemCostInfo gives the count of *currency/token* costs;
+		-- the `extendedCost` flag from GetMerchantItemInfo is unreliable (flags non-currency oddities too).
+		local costCount = GetMerchantItemCostInfo(i) or 0
 		local row = {
 			index = i,
 			link = link,
@@ -39,7 +42,7 @@ function Scanner.Rescan()
 			stackCount = stackCount or 1,
 			numAvailable = numAvailable or -1,
 			isUsable = isUsable,
-			hasExtendedCost = extendedCost and true or false,
+			hasExtendedCost = costCount > 0,
 		}
 		ResolveRow(row)
 		rows[#rows + 1] = row

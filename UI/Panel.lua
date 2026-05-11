@@ -40,6 +40,9 @@ local function BuyRow(row, qty)
 	if not row or not row.index then return end
 	qty = qty or 1
 	BuyMerchantItem(row.index, qty)
+	local total = qty * (row.stackCount or 1)
+	local label = (row.link or row.name or "?")
+	print(("|cff66ccffTSM-VFP|r: bought %dx %s"):format(total, label))
 end
 
 local function CreateRow(parent, i, anchorTo)
@@ -72,7 +75,7 @@ local function CreateRow(parent, i, anchorTo)
 	r:SetScript("OnEnter", function(self)
 		self.bg:SetColorTexture(1, 1, 1, 0.10)
 		if self.dataRow and self.dataRow.link then
-			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			GameTooltip:SetHyperlink(self.dataRow.link)
 			GameTooltip:Show()
 		end
@@ -235,12 +238,12 @@ local function CreatePanel()
 	return f
 end
 
----@param anchorTab Frame the side tab we float to the left of
+---@param anchorTab Frame the side tab; panel slides out to its right
 function Panel.AttachTo(anchorTab)
 	if not panelFrame then panelFrame = CreatePanel() end
 	panelFrame:ClearAllPoints()
 	panelFrame:SetParent(anchorTab)
-	panelFrame:SetPoint("TOPRIGHT", anchorTab, "TOPLEFT", -4, 0)
+	panelFrame:SetPoint("TOPLEFT", anchorTab, "TOPRIGHT", 4, 0)
 end
 
 function Panel.Show()

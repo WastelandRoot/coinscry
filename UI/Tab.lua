@@ -24,7 +24,7 @@ local function CreateTab()
 
 	b:SetScript("OnClick", function() if clickHandler then clickHandler() end end)
 	b:SetScript("OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+		GameTooltip:SetOwner(self, "ANCHOR_TOP")
 		GameTooltip:SetText("TSM-VFP — vendor filters")
 		GameTooltip:AddLine("Click to toggle filter panel", 1, 1, 1)
 		GameTooltip:Show()
@@ -40,7 +40,7 @@ function Tab.AttachTo(anchorFrame)
 	if not tabButton then tabButton = CreateTab() end
 	tabButton:ClearAllPoints()
 	tabButton:SetParent(anchorFrame)
-	tabButton:SetPoint("TOPRIGHT", anchorFrame, "TOPLEFT", 2, Y_OFFSET)
+	tabButton:SetPoint("TOPLEFT", anchorFrame, "TOPRIGHT", -2, Y_OFFSET)
 	tabButton:Show()
 end
 
