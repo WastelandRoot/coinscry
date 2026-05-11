@@ -14,7 +14,7 @@ local NUM_VISIBLE_ROWS = 14
 local state = nil
 local filteredOut = {}
 
-local panelFrame, qualityDropdown, groupDropdown, scrollFrame, scrollChild
+local panelFrame, qualityDropdown, groupDropdown, scrollFrame
 local rowWidgets = {}
 
 local QUALITY_CHOICES = {
@@ -42,10 +42,14 @@ local function BuyRow(row, qty)
 	BuyMerchantItem(row.index, qty)
 end
 
-local function CreateRow(parent, i)
+local function CreateRow(parent, i, anchorTo)
 	local r = CreateFrame("Button", nil, parent)
-	r:SetSize(PANEL_W - 30, ROW_H)
-	r:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -(i - 1) * ROW_H)
+	r:SetSize(PANEL_W - 40, ROW_H)
+	if i == 1 then
+		r:SetPoint("TOPLEFT", anchorTo, "TOPLEFT", 0, 0)
+	else
+		r:SetPoint("TOPLEFT", rowWidgets[i - 1], "BOTTOMLEFT", 0, 0)
+	end
 
 	r.bg = r:CreateTexture(nil, "BACKGROUND")
 	r.bg:SetAllPoints()
@@ -58,7 +62,7 @@ local function CreateRow(parent, i)
 	r.name = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	r.name:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
 	r.name:SetJustifyH("LEFT")
-	r.name:SetWidth(PANEL_W - 30 - ROW_H - 100)
+	r.name:SetWidth(PANEL_W - 40 - ROW_H - 100)
 
 	r.price = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	r.price:SetPoint("RIGHT", r, "RIGHT", -4, 0)
@@ -206,18 +210,17 @@ local function CreatePanel()
 
 	scrollFrame = CreateFrame("ScrollFrame", "TSMVFP_ScrollFrame", f, "FauxScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -100)
-	scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 10)
+	scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 24)
 	scrollFrame:SetScript("OnVerticalScroll", function(self, offset)
 		FauxScrollFrame_OnVerticalScroll(self, offset, ROW_H, UpdateRows)
 	end)
 
-	scrollChild = CreateFrame("Frame", nil, scrollFrame)
-	scrollChild:SetSize(PANEL_W - 30, NUM_VISIBLE_ROWS * ROW_H)
-	scrollChild:SetPoint("TOPLEFT", scrollFrame, "TOPLEFT", 0, 0)
-
+	-- Rows live on the panel itself (NOT inside the ScrollFrame); FauxScrollFrame
+	-- is a scrollbar-only widget and does not render descendants. We position rows
+	-- over the same viewport area as the ScrollFrame and update them on scroll.
 	rowWidgets = {}
 	for i = 1, NUM_VISIBLE_ROWS do
-		rowWidgets[i] = CreateRow(scrollChild, i)
+		rowWidgets[i] = CreateRow(f, i, scrollFrame)
 	end
 
 	local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
