@@ -7,7 +7,7 @@ local Theme = NS.UI.Themes.Default
 local Filters = NS.Filters
 local Scanner = NS.Scanner
 
-local PANEL_W = 340
+local PANEL_W = 440
 local ROW_H = Theme.rowHeight
 local NUM_VISIBLE_ROWS = 14
 
@@ -63,8 +63,9 @@ local function CreateRow(parent, i, anchorTo)
 
 	r.name = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	r.name:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
+	r.name:SetPoint("RIGHT", r, "RIGHT", -110, 0) -- reserve ~110px for price column
 	r.name:SetJustifyH("LEFT")
-	r.name:SetWidth(PANEL_W - 40 - ROW_H - 100)
+	r.name:SetWordWrap(false) -- auto-truncates with ellipsis when too long
 
 	r.price = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	r.price:SetPoint("RIGHT", r, "RIGHT", -4, 0)
