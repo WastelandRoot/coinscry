@@ -1,0 +1,19 @@
+# SavedVariables / WTF artifacts (in case the repo is ever checked out into AddOns)
+*.lua.bak
+*.lua~
+.luacheckcache
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Build / packaging
+.release/
+.package/
+*.zip
