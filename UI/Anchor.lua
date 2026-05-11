@@ -80,18 +80,23 @@ end
 
 ---@return string a multi-line dump of TSM application frames (for /tvfp dump)
 function Anchor.DumpFrames()
-	local lines = { "TSM application frames (visible, name matches TSM_FRAME:LargeApplicationFrame:):" }
-	local count = 0
-	for child, name in IterateTSMFrames() do
-		count = count + 1
-		local w = child:GetWidth() or 0
-		local h = child:GetHeight() or 0
-		local l = child:GetLeft() or -1
-		local t = child:GetTop() or -1
-		lines[#lines + 1] = ("  %d. %s  size=%dx%d  topleft=(%.0f, %.0f)"):format(count, name, w, h, l, t)
-	end
-	if count == 0 then lines[#lines + 1] = "  (none)" end
-	return table.concat(lines, "\n")
+	local ok, result = pcall(function()
+		local lines = { "TSM application frames (visible, name matches TSM_FRAME:LargeApplicationFrame:):" }
+		local count = 0
+		for child, name in IterateTSMFrames() do
+			count = count + 1
+			local w = child:GetWidth() or 0
+			local h = child:GetHeight() or 0
+			local l = child:GetLeft() or -1
+			local t = child:GetTop() or -1
+			-- %.0f rather than %d so non-integer floats from GetWidth/etc don't trip strict integer conversion
+			lines[#lines + 1] = ("  %d. %s  size=%.0fx%.0f  topleft=(%.0f, %.0f)"):format(count, name, w, h, l, t)
+		end
+		if count == 0 then lines[#lines + 1] = "  (none)" end
+		return table.concat(lines, "\n")
+	end)
+	if not ok then return "DumpFrames errored: " .. tostring(result) end
+	return result
 end
 
 local function NotifyChanged()

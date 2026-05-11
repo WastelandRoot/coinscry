@@ -365,6 +365,8 @@ local function CreatePanel()
 		state.nameSubstring = (txt == "" and nil) or txt
 		SaveState(); Refresh()
 	end)
+	searchBox:HookScript("OnEnterPressed", function(self) self:ClearFocus() end)
+	searchBox:HookScript("OnEscapePressed", function(self) self:ClearFocus() end)
 
 	-- Row 1: Quality + Group dropdowns
 	qualityDropdown = CreateFrame("Frame", "TSMVFP_QualityDropdown", f, "UIDropDownMenuTemplate")
