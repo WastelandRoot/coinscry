@@ -16,6 +16,8 @@ local POLL_INTERVAL = 0.25
 local currentAnchor = nil
 local pollTicker = nil
 local listeners = {}
+local verbose = false
+local tickCount = 0
 
 ---Returns an iterator over visible UIParent children whose name matches the
 ---TSM LargeApplicationFrame pattern. Use for both detection and debug dumps.
@@ -98,8 +100,6 @@ local function NotifyChanged()
 	end
 end
 
-local verbose = false
-local tickCount = 0
 function Anchor.SetVerbose(v) verbose = v and true or false end
 function Anchor.GetTickCount() return tickCount end
 
