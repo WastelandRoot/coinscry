@@ -14,7 +14,7 @@ local clickHandler
 local function CreateTab()
 	local b = CreateFrame("Button", "TSMVFP_Tab", UIParent)
 	b:SetSize(TAB_W, TAB_H)
-	b:SetFrameStrata("HIGH")
+	b:SetFrameStrata("DIALOG") -- above TSM's vendor frame (HIGH)
 	Theme.ApplyToTab(b)
 
 	b.label = b:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")

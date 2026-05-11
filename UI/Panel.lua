@@ -336,7 +336,7 @@ local function CreatePanel()
 
 	local f = CreateFrame("Frame", "TSMVFP_Panel", UIParent, "BackdropTemplate")
 	f:SetSize(PANEL_W, PANEL_H)
-	f:SetFrameStrata("HIGH")
+	f:SetFrameStrata("DIALOG") -- above TSM's vendor frame (HIGH)
 	Theme.ApplyToPanel(f)
 	f:EnableMouse(true)
 

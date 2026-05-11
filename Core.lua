@@ -22,21 +22,26 @@ end
 TSMVFP.HasTSM = CheckTSM
 NS.HasTSM = CheckTSM
 
-local Scanner, Tab, Panel
+local Scanner, Tab, Panel, Anchor
+
+local function ApplyAnchor(anchor)
+	if not anchor then
+		if Tab then Tab.Hide() end
+		if Panel then Panel.Hide() end
+		return
+	end
+	if Tab then Tab.AttachTo(anchor) end
+	if Panel then Panel.AttachTo(anchor) end
+end
 
 local function OnMerchantShow()
 	Scanner = Scanner or NS.Scanner
 	Tab = Tab or NS.UI.Tab
 	Panel = Panel or NS.UI.Panel
+	Anchor = Anchor or NS.UI.Anchor
 
 	Scanner.Rescan()
-
-	-- M1 anchors to MerchantFrame only; M2-B will pick TSM frame when visible.
-	local anchor = MerchantFrame
-	if anchor then
-		Tab.AttachTo(anchor)
-		Panel.AttachTo(anchor)
-	end
+	Anchor.StartPolling() -- triggers immediate attach via the registered listener
 end
 
 local function OnMerchantUpdate()
@@ -45,8 +50,7 @@ local function OnMerchantUpdate()
 end
 
 local function OnMerchantClosed()
-	if NS.UI.Tab then NS.UI.Tab.Hide() end
-	if NS.UI.Panel then NS.UI.Panel.Hide() end
+	if NS.UI.Anchor then NS.UI.Anchor.StopPolling() end
 end
 
 local function OnPlayerLogin()
@@ -58,6 +62,9 @@ local function OnPlayerLogin()
 	end
 	if NS.UI.Tab then
 		NS.UI.Tab.SetClickHandler(function() NS.UI.Panel.Toggle() end)
+	end
+	if NS.UI.Anchor then
+		NS.UI.Anchor.OnChange(ApplyAnchor)
 	end
 	if NS.ItemCache then
 		NS.ItemCache.OnResolved(function()
@@ -91,6 +98,9 @@ SlashCmdList["TSMVFP"] = function(msg)
 			Log("  MerchantFrame shown, %d items", GetMerchantNumItems() or 0)
 			if ok then
 				Log("  TSM vendoring visible: %s", tostring(TSM_API.IsUIVisible("VENDORING")))
+			end
+			if NS.UI and NS.UI.Anchor then
+				Log("  anchor: %s", NS.UI.Anchor.GetSummary())
 			end
 		else
 			Log("  no merchant open")

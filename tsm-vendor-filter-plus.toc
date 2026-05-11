@@ -2,7 +2,7 @@
 ## Title: TSM-VFP — Vendor Filter Plus
 ## Notes: Adds quality, class, item-level, and (with TSM) group filters to vendor browsing. Best paired with TradeSkillMaster.
 ## Author: wastelandroot
-## Version: 0.0.2
+## Version: 0.0.3
 ## X-Category: Auctions
 ## X-License: MIT
 ## OptionalDeps: TradeSkillMaster
@@ -15,4 +15,5 @@ Filters.lua
 UI\Themes\Default.lua
 UI\Tab.lua
 UI\Panel.lua
+UI\Anchor.lua
 Core.lua
