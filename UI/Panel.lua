@@ -212,28 +212,28 @@ local function InitGroupDropdown()
 end
 
 local function ClassLabel(classID)
-	if not classID then return "All classes" end
+	if not classID then return "All types" end
 	local name = GetItemClassInfo and GetItemClassInfo(classID) or nil
-	return name or ("class " .. classID)
+	return name or ("type " .. classID)
 end
 
 local function SubclassLabel(classID, subclassID)
-	if subclassID == nil then return "All subclasses" end
+	if subclassID == nil then return "All subtypes" end
 	local name = GetItemSubClassInfo and GetItemSubClassInfo(classID, subclassID) or nil
-	return name or ("sub " .. subclassID)
+	return name or ("subtype " .. subclassID)
 end
 
 local function InitClassDropdown()
 	UIDropDownMenu_Initialize(classDropdown, function()
 		local info = UIDropDownMenu_CreateInfo()
-		info.text = "All classes"
+		info.text = "All types"
 		info.value = nil
 		info.checked = (state.classID == nil)
 		info.func = function()
 			state.classID = nil
 			state.subclassID = nil
-			UIDropDownMenu_SetText(classDropdown, "All classes")
-			UIDropDownMenu_SetText(subclassDropdown, "All subclasses")
+			UIDropDownMenu_SetText(classDropdown, "All types")
+			UIDropDownMenu_SetText(subclassDropdown, "All subtypes")
 			subclassDropdown:Hide()
 			SaveState(); Refresh()
 		end
@@ -252,7 +252,7 @@ local function InitClassDropdown()
 				state.classID = cid
 				state.subclassID = nil
 				UIDropDownMenu_SetText(classDropdown, ClassLabel(cid))
-				UIDropDownMenu_SetText(subclassDropdown, "All subclasses")
+				UIDropDownMenu_SetText(subclassDropdown, "All subtypes")
 				subclassDropdown:Show()
 				SaveState(); Refresh()
 			end
@@ -268,12 +268,12 @@ local function InitSubclassDropdown()
 		local cid = state.classID
 		if not cid then return end
 		local info = UIDropDownMenu_CreateInfo()
-		info.text = "All subclasses"
+		info.text = "All subtypes"
 		info.value = nil
 		info.checked = (state.subclassID == nil)
 		info.func = function()
 			state.subclassID = nil
-			UIDropDownMenu_SetText(subclassDropdown, "All subclasses")
+			UIDropDownMenu_SetText(subclassDropdown, "All subtypes")
 			SaveState(); Refresh()
 		end
 		UIDropDownMenu_AddButton(info)
@@ -350,24 +350,21 @@ local function CreatePanel()
 	closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, -4)
 	closeBtn:SetScript("OnClick", function() Panel.Hide() end)
 
-	-- Search box
-	searchBox = CreateFrame("EditBox", "TSMVFP_SearchBox", f, "InputBoxTemplate")
-	searchBox:SetPoint("TOPLEFT", f, "TOPLEFT", 18, -34)
-	searchBox:SetPoint("TOPRIGHT", f, "TOPRIGHT", -18, -34)
-	searchBox:SetHeight(18)
+	-- Search box (SearchBoxTemplate provides magnifier icon, "Search" placeholder, and clear button)
+	searchBox = CreateFrame("EditBox", "TSMVFP_SearchBox", f, "SearchBoxTemplate")
+	searchBox:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -32)
+	searchBox:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -32)
+	searchBox:SetHeight(20)
 	searchBox:SetAutoFocus(false)
 	searchBox:SetMaxLetters(64)
-	searchBox:SetText(state.nameSubstring or "")
-	searchBox:SetScript("OnTextChanged", function(self)
-		state.nameSubstring = self:GetText() or ""
-		if state.nameSubstring == "" then state.nameSubstring = nil end
+	if state.nameSubstring and state.nameSubstring ~= "" then
+		searchBox:SetText(state.nameSubstring)
+	end
+	searchBox:HookScript("OnTextChanged", function(self)
+		local txt = self:GetText() or ""
+		state.nameSubstring = (txt == "" and nil) or txt
 		SaveState(); Refresh()
 	end)
-	searchBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-	searchBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-	local searchLabel = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	searchLabel:SetPoint("RIGHT", searchBox, "LEFT", -2, 0)
-	searchLabel:SetText("search:")
 
 	-- Row 1: Quality + Group dropdowns
 	qualityDropdown = CreateFrame("Frame", "TSMVFP_QualityDropdown", f, "UIDropDownMenuTemplate")
@@ -443,12 +440,15 @@ local function CreatePanel()
 	return f
 end
 
----@param anchorTab Frame the side tab; panel slides out to its right
-function Panel.AttachTo(anchorTab)
+---@param anchorFrame Frame the vendor frame (MerchantFrame or TSM's); panel anchors past its right edge
+function Panel.AttachTo(anchorFrame)
 	if not panelFrame then panelFrame = CreatePanel() end
 	panelFrame:ClearAllPoints()
-	panelFrame:SetParent(anchorTab)
-	panelFrame:SetPoint("TOPLEFT", anchorTab, "TOPRIGHT", 4, 0)
+	panelFrame:SetParent(anchorFrame)
+	-- Anchor directly to the anchor frame's top-right, not via the tab, so the
+	-- panel's top edge aligns with the anchor's top regardless of the tab Y-offset.
+	-- ~32px right of the anchor leaves room for the tab to sit between them.
+	panelFrame:SetPoint("TOPLEFT", anchorFrame, "TOPRIGHT", 32, 0)
 end
 
 function Panel.Show()

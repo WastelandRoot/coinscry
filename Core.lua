@@ -31,11 +31,11 @@ local function OnMerchantShow()
 
 	Scanner.Rescan()
 
-	-- M1 anchors to MerchantFrame only; M2 will pick TSM frame when visible.
+	-- M1 anchors to MerchantFrame only; M2-B will pick TSM frame when visible.
 	local anchor = MerchantFrame
 	if anchor then
 		Tab.AttachTo(anchor)
-		Panel.AttachTo(Tab.Get())
+		Panel.AttachTo(anchor)
 	end
 end
 
