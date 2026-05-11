@@ -40,9 +40,8 @@ local function BuyRow(row, qty)
 	if not row or not row.index then return end
 	qty = qty or 1
 	BuyMerchantItem(row.index, qty)
-	local total = qty * (row.stackCount or 1)
 	local label = (row.link or row.name or "?")
-	print(("|cff66ccffTSM-VFP|r: bought %dx %s"):format(total, label))
+	print(("|cff66ccffTSM-VFP|r: bought %dx %s"):format(qty, label))
 end
 
 local function CreateRow(parent, i, anchorTo)
