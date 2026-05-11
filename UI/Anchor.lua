@@ -53,6 +53,12 @@ local function FindTSMVendoringFrame()
 	return nil
 end
 
+---@return Frame|nil the frame our tab + panel should attach to
+local function PickAnchor()
+	if not (MerchantFrame and MerchantFrame:IsShown()) then return nil end
+	return FindTSMVendoringFrame() or MerchantFrame
+end
+
 ---@return string detailed snapshot of detection at this moment (for /tvfp poll)
 function Anchor.Probe()
 	local lines = { "anchor probe:" }
@@ -86,12 +92,6 @@ function Anchor.DumpFrames()
 	end
 	if count == 0 then lines[#lines + 1] = "  (none)" end
 	return table.concat(lines, "\n")
-end
-
----@return Frame|nil the frame our tab + panel should attach to
-local function PickAnchor()
-	if not (MerchantFrame and MerchantFrame:IsShown()) then return nil end
-	return FindTSMVendoringFrame() or MerchantFrame
 end
 
 local function NotifyChanged()
