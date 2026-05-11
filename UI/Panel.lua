@@ -10,6 +10,9 @@ local Scanner = NS.Scanner
 local PANEL_W = 440
 local ROW_H = Theme.rowHeight
 local NUM_VISIBLE_ROWS = 14
+local TOP_RESERVED = 100  -- title + quality dropdown + group dropdown + padding
+local BOT_RESERVED = 30   -- hint line + padding
+local PANEL_H = TOP_RESERVED + NUM_VISIBLE_ROWS * ROW_H + BOT_RESERVED
 
 local state = nil
 local filteredOut = {}
@@ -195,7 +198,7 @@ local function CreatePanel()
 	state = state or Filters.NewState()
 
 	local f = CreateFrame("Frame", "TSMVFP_Panel", UIParent, "BackdropTemplate")
-	f:SetSize(PANEL_W, 380)
+	f:SetSize(PANEL_W, PANEL_H)
 	f:SetFrameStrata("HIGH")
 	Theme.ApplyToPanel(f)
 	f:EnableMouse(true)
@@ -212,8 +215,8 @@ local function CreatePanel()
 	groupDropdown:SetPoint("TOPLEFT", qualityDropdown, "BOTTOMLEFT", 0, -2)
 
 	scrollFrame = CreateFrame("ScrollFrame", "TSMVFP_ScrollFrame", f, "FauxScrollFrameTemplate")
-	scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -100)
-	scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 24)
+	scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -TOP_RESERVED)
+	scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, BOT_RESERVED - 6)
 	scrollFrame:SetScript("OnVerticalScroll", function(self, offset)
 		FauxScrollFrame_OnVerticalScroll(self, offset, ROW_H, UpdateRows)
 	end)
