@@ -49,6 +49,7 @@ local function OnMerchantShow()
 		or (NS.UI.Settings == nil) -- if Settings module isn't loaded yet, default to reset
 	if resetOnOpen and Panel.ResetFilters then Panel.ResetFilters() end
 	Anchor.StartPolling() -- triggers immediate attach via the registered listener
+	if Panel.OnMerchantInventoryChange then Panel.OnMerchantInventoryChange() end
 	if NS.UI.Settings and NS.UI.Settings.ShouldAutoOpen and NS.UI.Settings.ShouldAutoOpen() then
 		if Panel.Show then Panel.Show() end
 	end
@@ -56,6 +57,9 @@ end
 
 local function OnMerchantUpdate()
 	if NS.Scanner then NS.Scanner.Rescan() end
+	if NS.UI.Panel and NS.UI.Panel.OnMerchantInventoryChange then
+		NS.UI.Panel.OnMerchantInventoryChange()
+	end
 	if NS.UI.Panel then NS.UI.Panel.Refresh() end
 end
 

@@ -962,13 +962,16 @@ end
 -- Show panel + run vendor-context re-init. Separate from Panel.Show so the
 -- MerchantFrame-tab hook can re-show transparently without touching the
 -- user-toggle state (embedToggleOn).
+--
+-- Note: dropdown Init* calls used to live here, but ShowVisible runs on
+-- every Buyback↔Merchant tab toggle in embed mode — so the dropdowns got
+-- rebuilt on each toggle even though the inventory hadn't changed.
+-- Inventory-driven re-init is now triggered by MERCHANT_SHOW /
+-- MERCHANT_UPDATE via Panel.OnMerchantInventoryChange().
 local function ShowVisible()
 	if not panelFrame then return end
 	if displayMode == "embedded" then EnterEmbedMode() end
 	panelFrame:Show()
-	if classDropdown then InitClassDropdown() end
-	if subclassDropdown then InitSubclassDropdown() end
-	if demonDropdown then InitDemonDropdown() end
 	Refresh()
 end
 
@@ -1035,6 +1038,17 @@ if _G.hooksecurefunc and _G.MerchantFrame_Update then
 end
 
 function Panel.GetDisplayMode() return displayMode end
+
+---Called from MERCHANT_SHOW / MERCHANT_UPDATE handlers. Only the demon
+---dropdown's visibility depends on the current vendor's inventory (it's
+---shown only at vendors selling warlock tomes); the class/subclass/quality
+---dropdowns are inventory-agnostic for their *visible* state and lazily
+---re-fetch rows when the user opens them, so they don't need a rebuild on
+---every inventory change.
+function Panel.OnMerchantInventoryChange()
+	if not panelFrame then return end
+	if demonDropdown and InitDemonDropdown then InitDemonDropdown() end
+end
 
 function Panel.IsShown() return panelFrame and panelFrame:IsShown() end
 function Panel.GetState() return state end

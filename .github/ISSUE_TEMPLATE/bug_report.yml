@@ -1,0 +1,84 @@
+name: Bug report
+description: Something doesn't work the way it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. The fields below help me reproduce the issue without going back and forth.
+
+  - type: input
+    id: version
+    attributes:
+      label: Coinscry version
+      description: Find it on the AddOns screen at character select, or under `## Version` in `coinscry.toc`. If you don't know, write "latest".
+      placeholder: e.g. v0.5.0
+    validations:
+      required: true
+
+  - type: input
+    id: wow-client
+    attributes:
+      label: WoW client + interface number
+      description: Which flavor (TBC Anniversary / Cata Classic / Retail / …) and the interface number from the AddOns screen ("out of date" check).
+      placeholder: e.g. TBC Anniversary, Interface 20505
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tsm
+    attributes:
+      label: Is TradeSkillMaster loaded?
+      options:
+        - "Yes"
+        - "No"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: elvui
+    attributes:
+      label: Is ElvUI loaded?
+      options:
+        - "Yes"
+        - "No"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: What you did, in order. Bonus points for the specific NPC name or zone.
+      placeholder: |
+        1. Open vendor "Innkeeper Coryth Stoktron" at Allerian Stronghold
+        2. Click the Coinscry tab
+        3. Toggle "Can use"
+        4. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened
+      description: Include the exact text of any Lua error (the red text in chat or from BugSack / BugGrabber if installed).
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics (optional but helpful)
+      description: |
+        Output of `/coinscry status` and `/coinscry dump` while the vendor is open. Paste inside the code block.
+      render: text
