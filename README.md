@@ -2,6 +2,8 @@
 
 Vendor-browsing filters for World of Warcraft TBC Anniversary. Best paired with [TradeSkillMaster](https://www.tradeskillmaster.com/), works standalone too.
 
+[Download on CurseForge](https://www.curseforge.com/wow/addons/coinscry) · [Releases on GitHub](https://github.com/WastelandRoot/coinscry/releases)
+
 TSM ships its vendor filter button as a stub (literal `-- TODO` in `Core/UI/VendoringUI/Buy.lua`), so vendor browsing inside TSM is text-search only. Coinscry adds quality, item-type, item-level, affordability, can-use, already-known, demon-type, and TSM-group filters via a side tab + slide-out panel that follows whichever vendor frame (TSM's or Blizzard's) is in front.
 
 ## Screenshots

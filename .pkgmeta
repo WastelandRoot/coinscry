@@ -1,0 +1,16 @@
+# BigWigs Packager config. https://github.com/BigWigsMods/packager
+#
+# Triggered from .github/workflows/release.yml on tag push (vX.Y.Z).
+# Builds a zip of just the addon files, substitutes @project-version@ in the
+# .toc, and uploads to CurseForge using the CF_API_KEY GitHub secret.
+
+package-as: coinscry
+
+enable-nolib-creation: no
+
+ignore:
+  - .github
+  - .gitignore
+  - .pkgmeta
+  - DESIGN.md
+  - Media/screenshots

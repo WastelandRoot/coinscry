@@ -1,0 +1,30 @@
+name: Package and release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Package and upload
+        uses: BigWigsMods/packager@master
+        env:
+          # CF_API_KEY: CurseForge personal API token; create at
+          #   https://www.curseforge.com/account/api-tokens
+          # Add it as a GitHub repository secret named CF_API_KEY
+          # at https://github.com/WastelandRoot/coinscry/settings/secrets/actions
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          # GITHUB_TOKEN is provided automatically; the packager uses it to
+          # also create / attach a GitHub Release with the same zip.
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
