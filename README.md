@@ -16,10 +16,6 @@ TSM ships its vendor filter button as a stub (literal `-- TODO` in `Core/UI/Vend
 |---|---|
 | ![quality-type](Media/screenshots/03-quality-type.png) | ![can-use-affordable](Media/screenshots/04-can-use-affordable.png) |
 
-| Default compact layout — only search + the three checkboxes shown; advanced filters collapse behind a header click |
-|---|
-| ![collapsed](Media/screenshots/05-collapsed.png) |
-
 ## Installation
 
 1. Download the latest release (or clone this repo into your AddOns folder).

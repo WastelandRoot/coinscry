@@ -19,8 +19,6 @@ The panel auto-detects which frame is in front and re-anchors as you open and cl
 
 Compact by default — only search and the three usage checkboxes are shown until you expand the **Filters** header.
 
-![compact default layout](https://raw.githubusercontent.com/WastelandRoot/coinscry/main/Media/screenshots/05-collapsed.png)
-
 - **Search** — case-insensitive substring on item names.
 - **Can use** — hides items WoW marks red in the merchant frame (wrong class, wrong proficiency, level too low, missing profession, etc.). Driven by `GetMerchantItemInfo`'s `isUsable` flag, so it matches WoW's own determination exactly.
 - **Affordable** — checks both gold and any extended-cost items/currencies.
