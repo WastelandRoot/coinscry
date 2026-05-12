@@ -18,6 +18,11 @@ globals = {
 	"CoinscryCharDB",  -- per-character SavedVariables
 	"SLASH_COINSCRY1", -- slash-command registration
 	"SlashCmdList",    -- slash-command callback table (assigned key)
+	-- Blizzard tables we extend in-place rather than read. WoW addons
+	-- conventionally register popup templates by writing into the global
+	-- StaticPopupDialogs table; suppressing the "mutating non-standard
+	-- global" warning here is the canonical way to declare that intent.
+	"StaticPopupDialogs",
 }
 
 -- WoW API surface — too large to enumerate exhaustively. Allow reads of

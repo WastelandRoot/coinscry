@@ -788,7 +788,8 @@ local function CreatePanel()
 	local function OnHeaderClick(key)
 		return function()
 			if state.sortKey == key then
-				state.sortAscending = not (state.sortAscending ~= false)
+				-- Flip direction. Treat nil as ascending; if explicitly false, flip back to ascending.
+				state.sortAscending = (state.sortAscending == false)
 			else
 				state.sortKey = key
 				state.sortAscending = true

@@ -188,8 +188,8 @@ SlashCmdList["COINSCRY"] = function(msg)
 			Log("no merchant open")
 			return
 		end
-		local Panel = NS.UI and NS.UI.Panel
-		local s = Panel and Panel.GetState and Panel.GetState() or nil
+		local p = NS.UI and NS.UI.Panel
+		local s = p and p.GetState and p.GetState() or nil
 		Log("debug — panel state: qualityMin=%s, groupPath=%s, nameSubstring=%s",
 			tostring(s and s.qualityMin), tostring(s and s.groupPath), tostring(s and s.nameSubstring))
 		if not s then Log("  panel never opened yet"); return end
