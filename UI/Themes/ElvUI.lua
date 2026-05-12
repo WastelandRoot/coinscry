@@ -37,8 +37,21 @@ function Theme.ApplyToButton(button)      safeCall("HandleButton", button) end
 function Theme.ApplyToTab(button)         safeCall("HandleButton", button) end
 function Theme.ApplyToCloseButton(button) safeCall("HandleCloseButton", button) end
 function Theme.ApplyToEditBox(editBox)    safeCall("HandleEditBox", editBox) end
-function Theme.ApplyToDropDown(dropdown)  safeCall("HandleDropDownBox", dropdown) end
 function Theme.ApplyToScrollBar(scroll)   safeCall("HandleScrollBar", scroll) end
+
+function Theme.ApplyToDropDown(dropdown, width)
+	safeCall("HandleDropDownBox", dropdown, width)
+	-- Extend the underlying click target to span the visible flat box.
+	-- ElvUI doesn't resize <name>Button; without this, only the small original
+	-- area on the right edge is clickable (~16px), which is unintuitive.
+	local name = dropdown.GetName and dropdown:GetName() or nil
+	local btn = name and _G[name .. "Button"] or nil
+	if btn then
+		btn:ClearAllPoints()
+		btn:SetPoint("TOPLEFT", dropdown, "TOPLEFT", 18, -2)
+		btn:SetPoint("BOTTOMRIGHT", dropdown, "BOTTOMRIGHT", -2, 2)
+	end
+end
 
 -- Convenience: apply Default then layer ElvUI on top if active. Tab/Panel
 -- call this rather than touching either theme directly.
