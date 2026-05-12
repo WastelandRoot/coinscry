@@ -968,8 +968,15 @@ local function ShowVisible()
 end
 
 local function HideVisible()
-	if displayMode == "embedded" then ExitEmbedMode() end
+	-- Order matters: hide our panel *first*, then exit embed mode.
+	-- ExitEmbedMode triggers MerchantFrame_Update, which fires our hook
+	-- (OnMerchantFrameUpdate). That hook re-hides MerchantItem1..12 if the
+	-- panel is still visible — so if we exited embed first, the merchant
+	-- items would be unhidden by ExitEmbedMode and then immediately
+	-- re-hidden by the hook, leaving an empty merchant frame after the user
+	-- clicked the Coinscry tab to close the view.
 	if panelFrame then panelFrame:Hide() end
+	if displayMode == "embedded" then ExitEmbedMode() end
 end
 
 function Panel.Show()
