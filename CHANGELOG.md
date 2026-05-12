@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.3.0 — 2026-05-12
+
+**M3-D — columns, sort, drag-to-resize, qty preview, colored prices.**
+
+- **Column layout.** Rows now display `icon | qty | Name | iLvl | Cost` with a clickable header strip above the scroll area. iLvl is blank for items where it isn't meaningful (food, reagents).
+- **Sortable headers.** Click *Item* / *ilvl* / *Cost* to sort ascending by that column; click again to flip to descending. Active column shows a `▲` / `▼` arrow texture next to its label.
+- **Drag-to-resize.** Bottom-right grip resizes the panel in both axes. Vertical drag shows more rows; horizontal drag widens the Name column. Min size enforced; resized dimensions persisted per-character in `CoinscryCharDB.panelSize`.
+- **Per-row buy-qty preview.** New column between icon and name shows `x1` by default, switches live to `xN` (item's stack size) while Shift is held — preview of what clicking will buy.
+- **TSM-style colored prices.** `g` / `s` / `c` denomination letters tinted yellow / silver / copper; digits white. Easier to scan at a glance.
+
 ## v0.2.1 — 2026-05-12
 
 Packaging-only release; no functional code changes from v0.2.0.
