@@ -13,6 +13,7 @@ NS.Filters = Filters
 ---@field reqLevelMax? number row.minLevel must be <= this
 ---@field affordableOnly? boolean only show items the player can afford right now
 ---@field hideAlreadyKnown? boolean hide spell-teaching items the player or current pet already knows
+---@field demonType? string only show warlock-tome rows whose Teaches line names this demon (Imp/Voidwalker/Felhunter/Succubus/Felguard)
 
 ---Default empty filter state — no filters applied.
 function Filters.NewState()
@@ -27,6 +28,7 @@ function Filters.NewState()
 		reqLevelMax      = nil,
 		affordableOnly   = nil,
 		hideAlreadyKnown = nil,
+		demonType        = nil,
 	}
 end
 
@@ -104,7 +106,21 @@ local function MatchOne(row, state)
 	if state.hideAlreadyKnown then
 		if Filters.IsRowAlreadyKnown(row) then return false end
 	end
+	if state.demonType ~= nil then
+		if row.demonType ~= state.demonType then return false end
+	end
 	return true
+end
+
+---Distinct demon types present in the scan. Used by the panel to decide
+---whether to show the demon-type dropdown.
+---@return table demons[name] = true
+function Filters.AvailableDemons(rows)
+	local d = {}
+	for _, row in ipairs(rows) do
+		if row.demonType then d[row.demonType] = true end
+	end
+	return d
 end
 
 ---@param rows table list from Scanner.GetRows()

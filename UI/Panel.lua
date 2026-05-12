@@ -10,7 +10,7 @@ local Scanner = NS.Scanner
 local PANEL_W = 440
 local ROW_H = Theme.rowHeight
 local NUM_VISIBLE_ROWS = 14
-local TOP_RESERVED = 186  -- title + search + 3 dropdown rows + ilvl/reqlvl row + checkbox row + padding
+local TOP_RESERVED = 216  -- title + search + 3 dropdown rows + ilvl/reqlvl row + checkbox row + demon row + padding
 local BOT_RESERVED = 30
 local PANEL_H = TOP_RESERVED + NUM_VISIBLE_ROWS * ROW_H + BOT_RESERVED
 
@@ -18,7 +18,7 @@ local state = nil
 local filteredOut = {}
 
 local panelFrame
-local searchBox, qualityDropdown, classDropdown, subclassDropdown, groupDropdown
+local searchBox, qualityDropdown, classDropdown, subclassDropdown, groupDropdown, demonDropdown
 local ilvlMinBox, ilvlMaxBox, reqLevelMaxBox
 local affordableCheck, knownCheck
 local scrollFrame
@@ -258,6 +258,49 @@ local function InitClassDropdown()
 	UIDropDownMenu_SetText(classDropdown, ClassLabel(state.classID))
 end
 
+local function InitDemonDropdown()
+	if not demonDropdown then return end
+	UIDropDownMenu_Initialize(demonDropdown, function()
+		local info = UIDropDownMenu_CreateInfo()
+		info.text = "Any demon"
+		info.value = nil
+		info.checked = (state.demonType == nil)
+		info.func = function()
+			state.demonType = nil
+			UIDropDownMenu_SetText(demonDropdown, "Any demon")
+			Refresh()
+		end
+		UIDropDownMenu_AddButton(info)
+
+		local demons = Filters.AvailableDemons(Scanner.GetRows())
+		local sorted = {}
+		for d in pairs(demons) do sorted[#sorted + 1] = d end
+		table.sort(sorted)
+		for _, d in ipairs(sorted) do
+			local entry = UIDropDownMenu_CreateInfo()
+			entry.text = d
+			entry.value = d
+			entry.checked = (state.demonType == d)
+			entry.func = function()
+				state.demonType = d
+				UIDropDownMenu_SetText(demonDropdown, d)
+				Refresh()
+			end
+			UIDropDownMenu_AddButton(entry)
+		end
+	end)
+	UIDropDownMenu_SetWidth(demonDropdown, 130)
+	UIDropDownMenu_SetText(demonDropdown, state.demonType or "Any demon")
+
+	-- Only surface this filter when the current vendor actually sells tomes;
+	-- otherwise it's clutter on every other vendor.
+	local any = false
+	for _, row in ipairs(Scanner.GetRows()) do
+		if row.demonType then any = true; break end
+	end
+	if any then demonDropdown:Show() else demonDropdown:Hide() end
+end
+
 local function InitSubclassDropdown()
 	UIDropDownMenu_Initialize(subclassDropdown, function()
 		local cid = state.classID
@@ -444,6 +487,11 @@ local function CreatePanel()
 		function(v) state.hideAlreadyKnown = v end
 	)
 
+	-- Row 5: demon-type dropdown (contextual — hidden when vendor has no tomes)
+	demonDropdown = CreateFrame("Frame", "TSMVFP_DemonDropdown", f, "UIDropDownMenuTemplate")
+	demonDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -184)
+	NS.UI.ApplyTheme("ApplyToDropDown", demonDropdown, 130)
+
 	-- Scroll frame + rows
 	scrollFrame = CreateFrame("ScrollFrame", "TSMVFP_ScrollFrame", f, "FauxScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -TOP_RESERVED)
@@ -470,6 +518,7 @@ local function CreatePanel()
 	InitGroupDropdown()
 	InitClassDropdown()
 	InitSubclassDropdown()
+	InitDemonDropdown()
 	f:Hide()
 	return f
 end
@@ -488,9 +537,10 @@ end
 function Panel.Show()
 	if not panelFrame then return end
 	panelFrame:Show()
-	-- Re-init the class dropdowns each show in case the vendor changed.
+	-- Re-init the vendor-contextual dropdowns each show in case the vendor changed.
 	if classDropdown then InitClassDropdown() end
 	if subclassDropdown then InitSubclassDropdown() end
+	if demonDropdown then InitDemonDropdown() end
 	Refresh()
 end
 
@@ -530,6 +580,7 @@ function Panel.ResetFilters()
 	if reqLevelMaxBox then reqLevelMaxBox:SetText("") end
 	if affordableCheck then affordableCheck:SetChecked(false) end
 	if knownCheck then knownCheck:SetChecked(false) end
+	if demonDropdown then UIDropDownMenu_SetText(demonDropdown, "Any demon") end
 
 	Refresh()
 end

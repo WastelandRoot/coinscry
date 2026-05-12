@@ -6,26 +6,44 @@ local ItemCache = NS.ItemCache
 
 local rows = {}
 
--- Hidden tooltip used to detect WoW's own "Already known" line, which
--- covers profession recipes, warlock demon tomes (current pet), and
--- generic spell-teaching items. Far more reliable than matching
--- GetItemSpell to IsSpellKnown — grimoires teach a different spell ID
--- than the one cast by Use:.
+-- Hidden tooltip used to detect WoW's own "Already known" line and the
+-- "Teaches <Demon>..." line on warlock demon tomes. The known line covers
+-- profession recipes, demon tomes (current pet), and generic spell-teaching
+-- items — far more reliable than matching GetItemSpell to IsSpellKnown.
+local DEMON_NAMES = {
+	Imp        = true,
+	Voidwalker = true,
+	Succubus   = true,
+	Felhunter  = true,
+	Felguard   = true,
+}
+
 local scanTip
-local function ScanForAlreadyKnown(link)
-	if not link then return false end
+---@param link string item link
+---@return boolean alreadyKnown
+---@return string? demonType one of the DEMON_NAMES keys, or nil
+local function ScanItemDetails(link)
+	if not link then return false, nil end
 	if not scanTip then
 		scanTip = CreateFrame("GameTooltip", "TSMVFP_Scanner", UIParent, "GameTooltipTemplate")
 		scanTip:SetOwner(UIParent, "ANCHOR_NONE")
 	end
 	scanTip:ClearLines()
-	if not pcall(function() scanTip:SetHyperlink(link) end) then return false end
+	if not pcall(function() scanTip:SetHyperlink(link) end) then return false, nil end
+	local known = false
+	local demon = nil
 	local target = _G.ITEM_SPELL_KNOWN or "Already known"
 	for i = 1, scanTip:NumLines() do
 		local fs = _G["TSMVFP_ScannerTextLeft" .. i]
-		if fs and fs:GetText() == target then return true end
+		if fs then
+			local text = fs:GetText() or ""
+			if text == target then known = true end
+			-- Match "Use: Teaches Imp ..." or just "Teaches Imp ..."
+			local captured = text:match("Teaches (%S+)")
+			if captured and DEMON_NAMES[captured] then demon = captured end
+		end
 	end
-	return false
+	return known, demon
 end
 
 local function ResolveRow(row)
@@ -33,7 +51,7 @@ local function ResolveRow(row)
 	local q, ilvl, minLvl, classID, subclassID = ItemCache.Get(row.link)
 	row.quality, row.itemLevel, row.minLevel = q, ilvl, minLvl
 	row.classID, row.subclassID = classID, subclassID
-	row.alreadyKnown = ScanForAlreadyKnown(row.link)
+	row.alreadyKnown, row.demonType = ScanItemDetails(row.link)
 	if TSM_API and TSM_API.ToItemString then
 		local ok, itemString = pcall(TSM_API.ToItemString, row.link)
 		if ok and itemString then
