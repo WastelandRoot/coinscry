@@ -10,7 +10,7 @@ Theme.rowHeight = 22
 Theme.colors = {
 	bg          = { r = 0.05, g = 0.05, b = 0.05, a = 0.92 },
 	border      = { r = 0.50, g = 0.50, b = 0.50, a = 1.00 },
-	bgPanel     = { r = 0.10, g = 0.10, b = 0.12, a = 0.95 },
+	bgPanel     = { r = 0.08, g = 0.08, b = 0.10, a = 1.00 },
 	rowAlt      = { r = 1.00, g = 1.00, b = 1.00, a = 0.04 },
 	rowHover    = { r = 1.00, g = 1.00, b = 1.00, a = 0.10 },
 	text        = { r = 1.00, g = 1.00, b = 1.00 },
