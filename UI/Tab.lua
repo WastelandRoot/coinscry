@@ -3,7 +3,7 @@ NS.UI = NS.UI or {}
 local Tab = {}
 NS.UI.Tab = Tab
 
-local TAB_SIZE = 32
+local TAB_SIZE = 40
 local Y_OFFSET = -34
 local LOGO_PATH = "Interface\\AddOns\\tsm-vendor-filter-plus\\Media\\Logo64"
 

@@ -55,6 +55,27 @@ local ARMOR_PROFICIENCY = {
 	DRUID       = { [0] = true, [1] = true, [2] = true, [8] = true },
 }
 
+-- TBC weapon proficiency by class file string. Includes max-trainable weapon
+-- subclasses — anything the class can *eventually* train. Filter intent is
+-- "shopping for a weapon I'd want to use later," so we don't gate on the
+-- player's current training state (no easy API for that).
+-- subclassIDs:
+--   0=Axe1H 1=Axe2H 2=Bow 3=Gun 4=Mace1H 5=Mace2H 6=Polearm 7=Sword1H 8=Sword2H
+--   10=Stave 13=Fist 15=Dagger 16=Thrown 18=Crossbow 19=Wand 20=FishingPole
+-- 20 (FishingPole) is universal; included for every class.
+local WEAPON_PROFICIENCY = {
+	WARRIOR     = { [0] = true, [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] = true, [7] = true, [8] = true, [10] = true, [13] = true, [15] = true, [16] = true, [18] = true, [20] = true },
+	PALADIN     = { [0] = true, [1] = true, [4] = true, [5] = true, [6] = true, [7] = true, [8] = true, [20] = true },
+	DEATHKNIGHT = { [0] = true, [1] = true, [4] = true, [5] = true, [6] = true, [7] = true, [8] = true, [20] = true },
+	HUNTER      = { [0] = true, [1] = true, [2] = true, [3] = true, [6] = true, [7] = true, [8] = true, [10] = true, [13] = true, [15] = true, [16] = true, [18] = true, [20] = true },
+	SHAMAN      = { [0] = true, [1] = true, [4] = true, [5] = true, [10] = true, [13] = true, [15] = true, [20] = true },
+	ROGUE       = { [2] = true, [3] = true, [4] = true, [7] = true, [13] = true, [15] = true, [16] = true, [18] = true, [20] = true },
+	PRIEST      = { [4] = true, [10] = true, [15] = true, [19] = true, [20] = true },
+	MAGE        = { [7] = true, [10] = true, [15] = true, [19] = true, [20] = true },
+	WARLOCK     = { [7] = true, [10] = true, [15] = true, [19] = true, [20] = true },
+	DRUID       = { [4] = true, [5] = true, [6] = true, [10] = true, [13] = true, [15] = true, [20] = true },
+}
+
 local function PlayerLevel()
 	return (UnitLevel and UnitLevel("player")) or 1
 end
@@ -82,13 +103,24 @@ local function CanWearArmor(classID, subclassID)
 	return PlayerLevel() >= p
 end
 
+---Can the player ever use this weapon (max-trainable proficiency)? Returns nil
+---for non-weapons.
+---@param classID? number
+---@param subclassID? number
+---@return boolean|nil
+local function CanUseWeapon(classID, subclassID)
+	if classID ~= 2 then return nil end -- Enum.ItemClass.Weapon
+	local cf = PlayerClassFile()
+	if not cf then return nil end
+	local profs = WEAPON_PROFICIENCY[cf]
+	if not profs then return nil end
+	return profs[subclassID] == true
+end
+
 ---Can the player use this item right now? Combines:
 ---  - row.minLevel <= player level
 ---  - Class armor-proficiency table for Enum.ItemClass.Armor rows
----Note: weapon-proficiency filtering is deferred — TBC has 18+ weapon
----subclasses and per-class proficiencies are train-on-level, so weapons
----always pass for now (we don't want to spuriously hide weapons the
----player has trained but we can't easily verify).
+---  - Class weapon-proficiency table (max trainable) for Enum.ItemClass.Weapon rows
 ---@param row table Scanner row
 ---@return boolean
 function Filters.IsRowUsable(row)
@@ -99,6 +131,8 @@ function Filters.IsRowUsable(row)
 	if row.classID and row.subclassID then
 		local armor = CanWearArmor(row.classID, row.subclassID)
 		if armor == false then return false end
+		local weapon = CanUseWeapon(row.classID, row.subclassID)
+		if weapon == false then return false end
 	end
 	return true
 end
