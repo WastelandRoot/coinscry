@@ -62,7 +62,7 @@ If you have multiple TSM application UIs open at once (Vendoring + Crafting, for
 
 Active development happens on [Forgejo at git.kal.run/kaltec/coinscry](https://git.kal.run/kaltec/coinscry); GitHub is the release mirror.
 
-Issues and pull requests welcome on either platform. See [`DESIGN.md`](DESIGN.md) for the architecture rationale (especially §3, which covers why the addon is a companion overlay rather than something injected into TSM's vendor frame).
+Issues and pull requests welcome on github. See [`DESIGN.md`](DESIGN.md) for the architecture rationale (especially §3, which covers why the addon is a companion overlay rather than something injected into TSM's vendor frame).
 
 ## License
 
