@@ -9,10 +9,23 @@ local Scanner = NS.Scanner
 
 local PANEL_W = 440
 local ROW_H = Theme.rowHeight
-local NUM_VISIBLE_ROWS = 14
-local TOP_RESERVED = 216  -- title + search + 3 dropdown rows + ilvl/reqlvl row + checkbox row + demon row + padding
+local DEFAULT_VISIBLE_ROWS = 14
+local MAX_ROWS = 25 -- widget pool; user can resize panel up to this many rows tall
+local HEADER_H = 18 -- column header strip above the scroll area
+local TOP_RESERVED = 216 + HEADER_H
 local BOT_RESERVED = 30
-local PANEL_H = TOP_RESERVED + NUM_VISIBLE_ROWS * ROW_H + BOT_RESERVED
+local PANEL_H = TOP_RESERVED + DEFAULT_VISIBLE_ROWS * ROW_H + BOT_RESERVED
+local MIN_PANEL_W = 420
+local MIN_PANEL_H = TOP_RESERVED + 3 * ROW_H + BOT_RESERVED -- enough for header + 3 rows + bottom hint
+
+-- Column geometry. Icon + qty + ilvl + cost are fixed-width;
+-- Name fills the remaining horizontal space.
+local COL_ICON_W = 20
+local COL_QTY_W  = 36 -- "x1" / "xN" buy-qty preview prefix (fits up to "x999")
+local COL_ILVL_W = 40
+local COL_COST_W = 100
+local COL_RIGHT_PAD = 4 -- inside-the-row pad on the right
+local COL_GAP = 6       -- gap between columns
 
 local state = nil
 local filteredOut = {}
@@ -21,6 +34,7 @@ local panelFrame
 local searchBox, qualityDropdown, classDropdown, subclassDropdown, groupDropdown, demonDropdown
 local ilvlMinBox, ilvlMaxBox, reqLevelMaxBox
 local affordableCheck, canUseCheck, knownCheck
+local headerRow, hdrName, hdrIlvl, hdrCost
 local scrollFrame
 local rowWidgets = {}
 
@@ -40,14 +54,27 @@ local function QualityLabelFor(value)
 	return QUALITY_CHOICES[1].label
 end
 
+-- TSM-style money colors: numbers white, denomination letters tinted.
+local PRICE_NUM = "|cffffffff"
+local PRICE_G   = "|cffffd70a"
+local PRICE_S   = "|cffc0c0c0"
+local PRICE_C   = "|cffcc8a3f"
+local PRICE_END = "|r"
+
 local function FormatPrice(copper)
 	if not copper or copper == 0 then return "" end
 	local g = math.floor(copper / 10000)
 	local s = math.floor((copper % 10000) / 100)
 	local c = copper % 100
-	if g > 0 then return ("%dg %ds %dc"):format(g, s, c) end
-	if s > 0 then return ("%ds %dc"):format(s, c) end
-	return ("%dc"):format(c)
+	local out = {}
+	if g > 0 then
+		out[#out + 1] = PRICE_NUM .. g .. PRICE_END .. PRICE_G .. "g" .. PRICE_END
+	end
+	if g > 0 or s > 0 then
+		out[#out + 1] = PRICE_NUM .. s .. PRICE_END .. PRICE_S .. "s" .. PRICE_END
+	end
+	out[#out + 1] = PRICE_NUM .. c .. PRICE_END .. PRICE_C .. "c" .. PRICE_END
+	return table.concat(out, " ")
 end
 
 local function BuyRow(row, qty)
@@ -106,31 +133,54 @@ StaticPopupDialogs["Coinscry_BUY_QTY"] = {
 
 local function CreateRow(parent, i, anchorTo)
 	local r = CreateFrame("Button", nil, parent)
-	r:SetSize(PANEL_W - 40, ROW_H)
+	r:SetHeight(ROW_H)
+	-- Anchor LEFT + RIGHT to the scroll area so rows stretch horizontally when
+	-- the panel is resized wider. Vertical position is by stacking against the
+	-- previous row, or against the scroll-area top for row 1.
 	if i == 1 then
 		r:SetPoint("TOPLEFT", anchorTo, "TOPLEFT", 0, 0)
+		r:SetPoint("TOPRIGHT", anchorTo, "TOPRIGHT", 0, 0)
 	else
 		r:SetPoint("TOPLEFT", rowWidgets[i - 1], "BOTTOMLEFT", 0, 0)
+		r:SetPoint("TOPRIGHT", rowWidgets[i - 1], "BOTTOMRIGHT", 0, 0)
 	end
 
 	r.bg = r:CreateTexture(nil, "BACKGROUND")
 	r.bg:SetAllPoints()
 	r.bg:SetColorTexture(1, 1, 1, 0)
 
+	-- Icon (leftmost column, no header)
 	r.icon = r:CreateTexture(nil, "ARTWORK")
 	r.icon:SetSize(ROW_H - 4, ROW_H - 4)
 	r.icon:SetPoint("LEFT", r, "LEFT", 2, 0)
 
+	-- Buy-qty preview: 'x1' default, 'xN' (stackCount) when Shift is held.
+	-- Reserves a fixed-width slot so the Name column doesn't jitter on modifier change.
+	r.qty = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	r.qty:SetPoint("LEFT", r.icon, "RIGHT", COL_GAP, 0)
+	r.qty:SetWidth(COL_QTY_W)
+	r.qty:SetJustifyH("LEFT")
+
+	-- Cost (rightmost) — anchored to row right with internal padding.
+	-- Inline color codes handle per-denomination tinting; base color is white
+	-- so the digits show through cleanly.
+	r.price = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	r.price:SetPoint("RIGHT", r, "RIGHT", -COL_RIGHT_PAD, 0)
+	r.price:SetWidth(COL_COST_W)
+	r.price:SetJustifyH("RIGHT")
+
+	-- iLvl (second-from-right) — left of price.
+	r.ilvl = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	r.ilvl:SetPoint("RIGHT", r.price, "LEFT", -COL_GAP, 0)
+	r.ilvl:SetWidth(COL_ILVL_W)
+	r.ilvl:SetJustifyH("RIGHT")
+
+	-- Name fills the rest, between qty and ilvl.
 	r.name = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	r.name:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
-	r.name:SetPoint("RIGHT", r, "RIGHT", -110, 0)
+	r.name:SetPoint("LEFT", r.qty, "RIGHT", 2, 0)
+	r.name:SetPoint("RIGHT", r.ilvl, "LEFT", -COL_GAP, 0)
 	r.name:SetJustifyH("LEFT")
 	r.name:SetWordWrap(false)
-
-	r.price = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	r.price:SetPoint("RIGHT", r, "RIGHT", -4, 0)
-	r.price:SetJustifyH("RIGHT")
-	r.price:SetTextColor(1, 0.82, 0)
 
 	r:SetScript("OnEnter", function(self)
 		self.bg:SetColorTexture(1, 1, 1, 0.10)
@@ -162,38 +212,83 @@ local function CreateRow(parent, i, anchorTo)
 	return r
 end
 
+---Number of rows that fit in the current scroll-frame height. Recomputed each
+---update so resize Just Works without explicit subscription.
+local function VisibleRowCount()
+	if not scrollFrame then return DEFAULT_VISIBLE_ROWS end
+	local h = scrollFrame:GetHeight() or (DEFAULT_VISIBLE_ROWS * ROW_H)
+	return math.max(1, math.min(MAX_ROWS, math.floor(h / ROW_H)))
+end
+
 local function UpdateRows()
 	if not panelFrame or not panelFrame:IsShown() then return end
 	local offset = FauxScrollFrame_GetOffset(scrollFrame) or 0
-	for i = 1, NUM_VISIBLE_ROWS do
+	local visible = VisibleRowCount()
+	local shiftHeld = IsShiftKeyDown and IsShiftKeyDown() or false
+	for i = 1, MAX_ROWS do
 		local w = rowWidgets[i]
-		local dataIdx = offset + i
-		local data = filteredOut[dataIdx]
-		if data then
-			w.dataRow = data
-			w.alt = (dataIdx % 2 == 0)
-			w.bg:SetColorTexture(1, 1, 1, w.alt and 0.04 or 0)
-			w.icon:SetTexture(data.texture or "Interface\\Icons\\INV_Misc_QuestionMark")
-			local cr, cg, cb = Theme.QualityColor(data.quality)
-			w.name:SetTextColor(cr, cg, cb)
-			w.name:SetText(data.name or "...")
-			local priceText = FormatPrice(data.price)
-			if data.hasExtendedCost then
-				priceText = (priceText == "" and "+ items" or (priceText .. " + items"))
-			end
-			w.price:SetText(priceText)
-			w:Show()
-		else
+		if i > visible then
 			w.dataRow = nil
 			w:Hide()
+		else
+			local dataIdx = offset + i
+			local data = filteredOut[dataIdx]
+			if data then
+				w.dataRow = data
+				w.alt = (dataIdx % 2 == 0)
+				w.bg:SetColorTexture(1, 1, 1, w.alt and 0.04 or 0)
+				w.icon:SetTexture(data.texture or "Interface\\Icons\\INV_Misc_QuestionMark")
+				w.qty:SetText("x" .. (shiftHeld and (data.stackCount or 1) or 1))
+				local cr, cg, cb = Theme.QualityColor(data.quality)
+				w.name:SetTextColor(cr, cg, cb)
+				w.name:SetText(data.name or "...")
+				-- iLvl: blank for items where it isn't meaningful (0 / -1 / nil)
+				if data.itemLevel and data.itemLevel > 0 then
+					w.ilvl:SetText(tostring(data.itemLevel))
+				else
+					w.ilvl:SetText("")
+				end
+				local priceText = FormatPrice(data.price)
+				if data.hasExtendedCost then
+					priceText = (priceText == "" and "+ items" or (priceText .. " + items"))
+				end
+				w.price:SetText(priceText)
+				w:Show()
+			else
+				w.dataRow = nil
+				w:Hide()
+			end
 		end
 	end
-	FauxScrollFrame_Update(scrollFrame, #filteredOut, NUM_VISIBLE_ROWS, ROW_H)
+	FauxScrollFrame_Update(scrollFrame, #filteredOut, visible, ROW_H)
+end
+
+local function UpdateSortIndicators()
+	if not hdrName then return end
+	local function apply(header, key)
+		if state and state.sortKey == key then
+			header.indicator:Show()
+			if state.sortAscending ~= false then
+				header.indicator:SetTexCoord(0, 1, 0, 1) -- normal: arrow up
+			else
+				header.indicator:SetTexCoord(0, 1, 1, 0) -- flipped: arrow down
+			end
+		else
+			header.indicator:Hide()
+		end
+	end
+	apply(hdrName, "name")
+	apply(hdrIlvl, "itemLevel")
+	apply(hdrCost, "price")
 end
 
 local function Refresh()
 	if not state then return end
 	Filters.Apply(Scanner.GetRows(), state, filteredOut)
+	if state.sortKey then
+		Filters.SortRows(filteredOut, state.sortKey, state.sortAscending ~= false)
+	end
+	UpdateSortIndicators()
 	UpdateRows()
 end
 Panel.Refresh = Refresh
@@ -425,6 +520,39 @@ local function CreatePanel()
 	NS.UI.ApplyTheme("ApplyToPanel", f)
 	f:EnableMouse(true)
 
+	-- Resize: bottom-right drag grip; bounds keep the panel usable. Restored
+	-- size from CoinscryCharDB if previously dragged.
+	f:SetResizable(true)
+	if f.SetResizeBounds then
+		f:SetResizeBounds(MIN_PANEL_W, MIN_PANEL_H)
+	elseif f.SetMinResize then
+		f:SetMinResize(MIN_PANEL_W, MIN_PANEL_H)
+	end
+
+	local resizeGrip = CreateFrame("Button", nil, f)
+	resizeGrip:SetSize(16, 16)
+	resizeGrip:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -2, 2)
+	resizeGrip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+	resizeGrip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+	resizeGrip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+	resizeGrip:SetScript("OnMouseDown", function() f:StartSizing("BOTTOMRIGHT") end)
+	resizeGrip:SetScript("OnMouseUp", function()
+		f:StopMovingOrSizing()
+		if CoinscryCharDB then
+			CoinscryCharDB.panelSize = { width = f:GetWidth(), height = f:GetHeight() }
+		end
+	end)
+
+	f:SetScript("OnSizeChanged", function() if Panel.Refresh then Panel.Refresh() end end)
+
+	-- Restore previously saved size if present.
+	if CoinscryCharDB and CoinscryCharDB.panelSize then
+		local sz = CoinscryCharDB.panelSize
+		if sz.width and sz.height and sz.width >= MIN_PANEL_W and sz.height >= MIN_PANEL_H then
+			f:SetSize(sz.width, sz.height)
+		end
+	end
+
 	-- Title + close button
 	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	title:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -10)
@@ -566,6 +694,80 @@ local function CreatePanel()
 	demonDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -184)
 	NS.UI.ApplyTheme("ApplyToDropDown", demonDropdown, 130)
 
+	-- Column header strip (sits above the scroll area). Headers are clickable
+	-- buttons; click toggles sort. Indicator FontString shows ▲/▼ on the
+	-- active column.
+	headerRow = CreateFrame("Frame", nil, f)
+	headerRow:SetHeight(HEADER_H)
+	headerRow:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -(TOP_RESERVED - HEADER_H))
+	headerRow:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -(TOP_RESERVED - HEADER_H))
+
+	local hdrDivider = headerRow:CreateTexture(nil, "ARTWORK")
+	hdrDivider:SetColorTexture(1, 1, 1, 0.10)
+	hdrDivider:SetPoint("BOTTOMLEFT", headerRow, "BOTTOMLEFT", 0, 0)
+	hdrDivider:SetPoint("BOTTOMRIGHT", headerRow, "BOTTOMRIGHT", 0, 0)
+	hdrDivider:SetHeight(1)
+
+	local function MakeHeader(text, justify)
+		local b = CreateFrame("Button", nil, headerRow)
+		b:SetHeight(HEADER_H)
+
+		-- Anchor the label on the justify side only so its frame is exactly as
+		-- wide as the rendered text. That lets the sort-indicator texture
+		-- anchor immediately adjacent to the text (not to the column edge).
+		b.label = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		b.label:SetText(text)
+		if justify == "RIGHT" then
+			b.label:SetPoint("RIGHT", b, "RIGHT", 0, 0)
+		else
+			b.label:SetPoint("LEFT", b, "LEFT", 0, 0)
+		end
+		b.label:SetJustifyH(justify)
+
+		-- UI-SortArrow is the standard Blizzard up-arrow texture; we flip its
+		-- TexCoord vertically when the sort is descending.
+		b.indicator = b:CreateTexture(nil, "OVERLAY")
+		b.indicator:SetSize(10, 10)
+		b.indicator:SetTexture("Interface\\Buttons\\UI-SortArrow")
+		if justify == "RIGHT" then
+			b.indicator:SetPoint("RIGHT", b.label, "LEFT", -2, 0)
+		else
+			b.indicator:SetPoint("LEFT", b.label, "RIGHT", 3, 0)
+		end
+		b.indicator:Hide()
+
+		b:SetScript("OnEnter", function(self) self.label:SetTextColor(1, 1, 0.6) end)
+		b:SetScript("OnLeave", function(self) self.label:SetTextColor(1, 1, 1) end)
+		return b
+	end
+
+	hdrCost = MakeHeader("Cost", "RIGHT")
+	hdrCost:SetWidth(COL_COST_W)
+	hdrCost:SetPoint("RIGHT", headerRow, "RIGHT", -COL_RIGHT_PAD, 0)
+
+	hdrIlvl = MakeHeader("ilvl", "RIGHT")
+	hdrIlvl:SetWidth(COL_ILVL_W)
+	hdrIlvl:SetPoint("RIGHT", hdrCost, "LEFT", -COL_GAP, 0)
+
+	hdrName = MakeHeader("Item", "LEFT")
+	hdrName:SetPoint("LEFT", headerRow, "LEFT", COL_ICON_W + COL_GAP + 2, 0)
+	hdrName:SetPoint("RIGHT", hdrIlvl, "LEFT", -COL_GAP, 0)
+
+	local function OnHeaderClick(key)
+		return function()
+			if state.sortKey == key then
+				state.sortAscending = not (state.sortAscending ~= false)
+			else
+				state.sortKey = key
+				state.sortAscending = true
+			end
+			Refresh()
+		end
+	end
+	hdrName:SetScript("OnClick", OnHeaderClick("name"))
+	hdrIlvl:SetScript("OnClick", OnHeaderClick("itemLevel"))
+	hdrCost:SetScript("OnClick", OnHeaderClick("price"))
+
 	-- Scroll frame + rows
 	scrollFrame = CreateFrame("ScrollFrame", "Coinscry_ScrollFrame", f, "FauxScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -TOP_RESERVED)
@@ -578,13 +780,13 @@ local function CreatePanel()
 	if sb then NS.UI.ApplyTheme("ApplyToScrollBar", sb) end
 
 	rowWidgets = {}
-	for i = 1, NUM_VISIBLE_ROWS do
+	for i = 1, MAX_ROWS do
 		rowWidgets[i] = CreateRow(f, i, scrollFrame)
 	end
 
 	local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 8)
-	hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 8)
+	hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -22, 8) -- room for the resize grip
 	hint:SetJustifyH("LEFT")
 	hint:SetText("clk: buy 1x -- shift-clk: buy stack -- rt-clk: enter qty")
 
