@@ -2,7 +2,7 @@
 ## Title: TSM-VFP — Vendor Filter Plus
 ## Notes: Adds quality, class, item-level, and (with TSM) group filters to vendor browsing. Best paired with TradeSkillMaster.
 ## Author: wastelandroot
-## Version: 0.1.6
+## Version: 0.1.7
 ## IconTexture: Interface\AddOns\tsm-vendor-filter-plus\Media\Logo64
 ## X-Category: Auctions
 ## X-License: MIT

@@ -34,107 +34,16 @@ function Filters.NewState()
 	}
 end
 
--- TBC armor proficiency by class file string. Values per (subclassID):
---   true       = can wear at any level
---   <number>   = can wear at level >= <number> (TBC mail/plate gating: Warrior /
---                Paladin get plate at 40, Hunter / Shaman get mail at 40, etc.)
---   nil        = cannot wear
--- subclassIDs:
---   0=Misc/Cosmetic 1=Cloth 2=Leather 3=Mail 4=Plate 6=Shield 7=Libram 8=Idol
---   9=Totem 10=Sigil
-local ARMOR_PROFICIENCY = {
-	WARRIOR     = { [0] = true, [1] = true, [2] = true, [3] = 40, [4] = 40, [6] = true },
-	PALADIN     = { [0] = true, [1] = true, [2] = true, [3] = 40, [4] = 40, [6] = true, [7] = true },
-	DEATHKNIGHT = { [0] = true, [1] = true, [2] = true, [3] = true, [4] = true, [10] = true },
-	HUNTER      = { [0] = true, [1] = true, [2] = true, [3] = 40 },
-	SHAMAN      = { [0] = true, [1] = true, [2] = true, [3] = 40, [6] = true, [9] = true },
-	ROGUE       = { [0] = true, [1] = true, [2] = true },
-	PRIEST      = { [0] = true, [1] = true },
-	MAGE        = { [0] = true, [1] = true },
-	WARLOCK     = { [0] = true, [1] = true },
-	DRUID       = { [0] = true, [1] = true, [2] = true, [8] = true },
-}
-
--- TBC weapon proficiency by class file string. Includes max-trainable weapon
--- subclasses — anything the class can *eventually* train. Filter intent is
--- "shopping for a weapon I'd want to use later," so we don't gate on the
--- player's current training state (no easy API for that).
--- subclassIDs:
---   0=Axe1H 1=Axe2H 2=Bow 3=Gun 4=Mace1H 5=Mace2H 6=Polearm 7=Sword1H 8=Sword2H
---   10=Stave 13=Fist 15=Dagger 16=Thrown 18=Crossbow 19=Wand 20=FishingPole
--- 20 (FishingPole) is universal; included for every class.
-local WEAPON_PROFICIENCY = {
-	WARRIOR     = { [0] = true, [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] = true, [7] = true, [8] = true, [10] = true, [13] = true, [15] = true, [16] = true, [18] = true, [20] = true },
-	PALADIN     = { [0] = true, [1] = true, [4] = true, [5] = true, [6] = true, [7] = true, [8] = true, [20] = true },
-	DEATHKNIGHT = { [0] = true, [1] = true, [4] = true, [5] = true, [6] = true, [7] = true, [8] = true, [20] = true },
-	HUNTER      = { [0] = true, [1] = true, [2] = true, [3] = true, [6] = true, [7] = true, [8] = true, [10] = true, [13] = true, [15] = true, [16] = true, [18] = true, [20] = true },
-	SHAMAN      = { [0] = true, [1] = true, [4] = true, [5] = true, [10] = true, [13] = true, [15] = true, [20] = true },
-	ROGUE       = { [2] = true, [3] = true, [4] = true, [7] = true, [13] = true, [15] = true, [16] = true, [18] = true, [20] = true },
-	PRIEST      = { [4] = true, [10] = true, [15] = true, [19] = true, [20] = true },
-	MAGE        = { [7] = true, [10] = true, [15] = true, [19] = true, [20] = true },
-	WARLOCK     = { [7] = true, [10] = true, [15] = true, [19] = true, [20] = true },
-	DRUID       = { [4] = true, [5] = true, [6] = true, [10] = true, [13] = true, [15] = true, [20] = true },
-}
-
-local function PlayerLevel()
-	return (UnitLevel and UnitLevel("player")) or 1
-end
-
-local function PlayerClassFile()
-	if not UnitClass then return nil end
-	local _, cf = UnitClass("player")
-	return cf
-end
-
----Can the player wear this armor row? Returns nil for non-armor (caller treats
----non-armor as not-blocked).
----@param classID? number
----@param subclassID? number
----@return boolean|nil
-local function CanWearArmor(classID, subclassID)
-	if classID ~= 4 then return nil end -- Enum.ItemClass.Armor
-	local cf = PlayerClassFile()
-	if not cf then return nil end
-	local profs = ARMOR_PROFICIENCY[cf]
-	if not profs then return nil end
-	local p = profs[subclassID]
-	if p == nil then return false end
-	if p == true then return true end
-	return PlayerLevel() >= p
-end
-
----Can the player ever use this weapon (max-trainable proficiency)? Returns nil
----for non-weapons.
----@param classID? number
----@param subclassID? number
----@return boolean|nil
-local function CanUseWeapon(classID, subclassID)
-	if classID ~= 2 then return nil end -- Enum.ItemClass.Weapon
-	local cf = PlayerClassFile()
-	if not cf then return nil end
-	local profs = WEAPON_PROFICIENCY[cf]
-	if not profs then return nil end
-	return profs[subclassID] == true
-end
-
----Can the player use this item right now? Combines:
----  - row.minLevel <= player level
----  - Class armor-proficiency table for Enum.ItemClass.Armor rows
----  - Class weapon-proficiency table (max trainable) for Enum.ItemClass.Weapon rows
----@param row table Scanner row
+---Can the player use this item? Backed by Scanner's tooltip scan, which marks
+---row.canUse=false if WoW itself rendered any restriction line in red
+---(armor/weapon proficiency, class restriction, level requirement, skill
+---requirement). This is the same signal WoW uses to color the item red in the
+---merchant frame.
+---@param row table Scanner row (Scanner.Rescan populates .canUse)
 ---@return boolean
 function Filters.IsRowUsable(row)
 	if not row then return false end
-	if row.minLevel and row.minLevel > 0 and PlayerLevel() < row.minLevel then
-		return false
-	end
-	if row.classID and row.subclassID then
-		local armor = CanWearArmor(row.classID, row.subclassID)
-		if armor == false then return false end
-		local weapon = CanUseWeapon(row.classID, row.subclassID)
-		if weapon == false then return false end
-	end
-	return true
+	return row.canUse ~= false -- nil or true both mean usable
 end
 
 ---Can the player afford row right now (gold + any extended currency/item cost)?
