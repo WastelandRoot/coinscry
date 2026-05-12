@@ -520,6 +520,11 @@ local function CreatePanel()
 	local function MakeFilterCheckbox(text, prevOrX, y, getter, setter)
 		local c = CreateFrame("CheckButton", nil, f, "ChatConfigCheckButtonTemplate")
 		c:SetSize(CHECKBOX_W, CHECKBOX_W)
+		-- ChatConfigCheckButtonTemplate uses a NEGATIVE right hit-rect inset to
+		-- make clicks on the (template-owned) label also toggle the checkbox.
+		-- That extended hit area was eating clicks intended for the next
+		-- checkbox in the row. Explicitly reset to the visible frame size.
+		c:SetHitRectInsets(0, 0, 0, 0)
 		-- Use our own FontString so we control its placement and can measure it.
 		if c.Text then c.Text:Hide() end
 		local label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
