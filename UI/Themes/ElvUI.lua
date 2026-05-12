@@ -32,7 +32,23 @@ local function safeCall(method, ...)
 	pcall(S[method], S, ...)
 end
 
-function Theme.ApplyToPanel(frame)        safeCall("HandleFrame", frame, true) end
+local function GetEMedia()
+	local raw = _G.ElvUI
+	if type(raw) ~= "table" then return nil end
+	local E = raw[1]
+	return E and E.media or nil
+end
+
+function Theme.ApplyToPanel(frame)
+	safeCall("HandleFrame", frame, true)
+	-- ElvUI's default backdrop is semi-transparent; force opaque so the world
+	-- doesn't bleed through our panel (matches the default theme's look).
+	if frame.backdrop and frame.backdrop.SetBackdropColor then
+		local m = GetEMedia()
+		local c = (m and m.backdropcolor) or { 0.06, 0.06, 0.06 }
+		pcall(frame.backdrop.SetBackdropColor, frame.backdrop, c[1] or 0.06, c[2] or 0.06, c[3] or 0.06, 1)
+	end
+end
 function Theme.ApplyToButton(button)      safeCall("HandleButton", button) end
 function Theme.ApplyToTab(button)         safeCall("HandleButton", button) end
 function Theme.ApplyToCloseButton(button) safeCall("HandleCloseButton", button) end

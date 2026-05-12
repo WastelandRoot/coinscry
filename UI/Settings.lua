@@ -63,8 +63,13 @@ local function MakeDropdown(parent, name, labelText, x, y, width, choices, gette
 	label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
 	label:SetText(labelText)
 
+	-- UIDropDownMenu frames have ~25px of internal padding from frame.TOPLEFT
+	-- to where the text actually renders. In ElvUI mode the backdrop covers
+	-- the *full* frame, so anchoring TOPLEFT directly puts the backdrop's
+	-- left edge under the label and the text indented inside — standard
+	-- dropdown-with-label look.
 	local d = CreateFrame("Frame", name, parent, "UIDropDownMenuTemplate")
-	d:SetPoint("TOPLEFT", label, "BOTTOMLEFT", -14, -4)
+	d:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -2)
 	UIDropDownMenu_SetWidth(d, width or 160)
 	NS.UI.ApplyTheme("ApplyToDropDown", d, width or 160)
 
@@ -169,13 +174,16 @@ local function CreateFrame_()
 	diagHeader:SetTextColor(1, 0.82, 0)
 
 	widgets.verbose = MakeCheckbox(
-		f, "Anchor tracing (logs to chat when anchor switches)", 16, -272,
+		f, "Anchor tracing", 16, -272,
 		function() return GetSetting("verbose") end,
 		function(v)
 			SetSetting("verbose", v)
 			if NS.UI.Anchor and NS.UI.Anchor.SetVerbose then NS.UI.Anchor.SetVerbose(v) end
 		end
 	)
+	local verboseHint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	verboseHint:SetPoint("TOPLEFT", widgets.verbose, "BOTTOMLEFT", 8, -2)
+	verboseHint:SetText("(logs to chat when the anchor switches between TSM and Merchant frames)")
 
 	local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 16, 12)
