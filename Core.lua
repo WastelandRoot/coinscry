@@ -41,7 +41,9 @@ local function OnMerchantShow()
 	Anchor = Anchor or NS.UI.Anchor
 
 	Scanner.Rescan()
-	if Panel.ResetFilters then Panel.ResetFilters() end -- start each vendor visit fresh
+	local resetOnOpen = (NS.UI.Settings and NS.UI.Settings.ShouldResetOnOpen and NS.UI.Settings.ShouldResetOnOpen())
+		or (NS.UI.Settings == nil) -- if Settings module isn't loaded yet, default to reset
+	if resetOnOpen and Panel.ResetFilters then Panel.ResetFilters() end
 	Anchor.StartPolling() -- triggers immediate attach via the registered listener
 end
 
@@ -54,12 +56,22 @@ local function OnMerchantClosed()
 	if NS.UI.Anchor then NS.UI.Anchor.StopPolling() end
 end
 
+local function GetVersion()
+	if C_AddOns and C_AddOns.GetAddOnMetadata then
+		return C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version") or "?"
+	elseif _G.GetAddOnMetadata then
+		return _G.GetAddOnMetadata(ADDON_NAME, "Version") or "?"
+	end
+	return "?"
+end
+
 local function OnPlayerLogin()
 	local ok, err = CheckTSM()
+	local ver = GetVersion()
 	if ok then
-		Log("loaded — TSM integration active")
+		Log("v%s loaded — TSM integration active", ver)
 	else
-		Log("loaded — %s; group filter disabled, all other filters available", err)
+		Log("v%s loaded — %s; group filter disabled, all other filters available", ver, err)
 	end
 	if NS.UI.Tab then
 		NS.UI.Tab.SetClickHandler(function() NS.UI.Panel.Toggle() end)
@@ -72,6 +84,9 @@ local function OnPlayerLogin()
 		NS.ItemCache.OnResolved(function()
 			if NS.UI.Panel then NS.UI.Panel.Refresh() end
 		end)
+	end
+	if NS.UI.Settings and NS.UI.Settings.ApplyOnLoad then
+		NS.UI.Settings.ApplyOnLoad()
 	end
 end
 
@@ -93,6 +108,8 @@ SlashCmdList["TSMVFP"] = function(msg)
 	msg = (msg or ""):lower():match("^%s*(.-)%s*$")
 	if msg == "" or msg == "toggle" then
 		if NS.UI and NS.UI.Panel then NS.UI.Panel.Toggle() end
+	elseif msg == "config" or msg == "settings" or msg == "options" then
+		if NS.UI and NS.UI.Settings then NS.UI.Settings.Toggle() end
 	elseif msg == "status" then
 		local ok, err = CheckTSM()
 		Log("status — TSM=%s%s", tostring(ok), ok and "" or (" ("..err..")"))
@@ -221,6 +238,6 @@ SlashCmdList["TSMVFP"] = function(msg)
 			end
 		end
 	else
-		Log("usage: /tvfp [toggle|status|groups|scan|dump|poll|debug|reset|anchor <merchant|tsm|auto>|trace [on|off]]")
+		Log("usage: /tvfp [toggle|config|status|reset|anchor <merchant|tsm|auto>|trace [on|off]|groups|scan|dump|poll|debug|theme]")
 	end
 end
