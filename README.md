@@ -8,13 +8,13 @@ TSM ships its vendor filter button as a stub (literal `-- TODO` in `Core/UI/Vend
 
 ## Screenshots
 
-| Default panel at a weapon vendor | Multiple filters narrowing to relevant recipes |
+| Embedded inside Blizzard's merchant frame (vanilla mode) | Attached to TSM's vendor frame, filtered to a TSM group |
 |---|---|
-| ![panel](Media/screenshots/01-panel.png) | ![multi-filter](Media/screenshots/02-multi-filter.png) |
+| ![embedded](Media/screenshots/01-embedded.png) | ![tsm-attached](Media/screenshots/02-tsm-attached.png) |
 
-| Anchored to TSM's vendor frame, filtered to a single TSM group | Type + subtype narrowing (Projectile → Bullet) |
+| Quality + weapon-type narrowing (filters section expanded) | Can-use + affordable checkboxes filtering the row set |
 |---|---|
-| ![tsm-group](Media/screenshots/03-tsm-group.png) | ![type-subtype](Media/screenshots/04-type-subtype.png) |
+| ![quality-type](Media/screenshots/03-quality-type.png) | ![can-use-affordable](Media/screenshots/04-can-use-affordable.png) |
 
 ## Installation
 

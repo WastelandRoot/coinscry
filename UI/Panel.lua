@@ -48,7 +48,7 @@ local rowWidgets = {}
 -- live in a collapsible block that toggles via a header button.
 local filtersHeaderBtn, filtersChevron
 local advancedWidgets = {} -- all advanced filter widgets, hide/show as a group
-local advancedCollapsed = false -- loaded from CoinscryCharDB on first CreatePanel
+local advancedCollapsed = true -- default to collapsed; loaded from CoinscryCharDB on first CreatePanel
 
 local function CurrentTopReserved()
 	return advancedCollapsed and TOP_RESERVED_COLLAPSED or TOP_RESERVED_EXPANDED
@@ -892,6 +892,11 @@ local embedToggleOn = false
 local HIDDEN_MERCHANT_WIDGETS = {
 	"MerchantNextPageButton", "MerchantPrevPageButton", "MerchantPageText",
 	"MerchantBuyBackItem", -- "your last sold item" icon; would otherwise float inside our panel
+	-- Repair UI shown at vendors that can repair (armor/weapon vendors).
+	-- Same problem as the buyback slot — Blizzard's MerchantFrame_Update
+	-- re-shows them on each tick and they float inside our panel.
+	"MerchantRepairItemButton", "MerchantRepairAllButton", "MerchantRepairText",
+	"MerchantGuildBankRepairButton",
 }
 for i = 1, 12 do HIDDEN_MERCHANT_WIDGETS[#HIDDEN_MERCHANT_WIDGETS + 1] = "MerchantItem" .. i end
 
