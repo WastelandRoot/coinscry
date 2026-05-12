@@ -49,12 +49,6 @@ local function FormatPrice(copper)
 	return ("%dc"):format(c)
 end
 
-local function SaveState()
-	if TSMVFPCharDB then
-		TSMVFPCharDB.filterState = state
-	end
-end
-
 local function BuyRow(row, qty)
 	if not row or not row.index then return end
 	qty = qty or 1
@@ -165,7 +159,7 @@ local function InitQualityDropdown()
 			info.func = function()
 				state.qualityMin = choice.value
 				UIDropDownMenu_SetText(qualityDropdown, choice.label)
-				SaveState(); Refresh()
+				Refresh()
 			end
 			UIDropDownMenu_AddButton(info)
 		end
@@ -185,7 +179,7 @@ local function InitGroupDropdown()
 		info.func = function()
 			state.groupPath = nil
 			UIDropDownMenu_SetText(groupDropdown, "Any group")
-			SaveState(); Refresh()
+			Refresh()
 		end
 		UIDropDownMenu_AddButton(info)
 
@@ -202,7 +196,7 @@ local function InitGroupDropdown()
 			entry.func = function()
 				state.groupPath = path
 				UIDropDownMenu_SetText(groupDropdown, path)
-				SaveState(); Refresh()
+				Refresh()
 			end
 			UIDropDownMenu_AddButton(entry)
 		end
@@ -235,7 +229,7 @@ local function InitClassDropdown()
 			UIDropDownMenu_SetText(classDropdown, "All types")
 			UIDropDownMenu_SetText(subclassDropdown, "All subtypes")
 			subclassDropdown:Hide()
-			SaveState(); Refresh()
+			Refresh()
 		end
 		UIDropDownMenu_AddButton(info)
 
@@ -254,7 +248,7 @@ local function InitClassDropdown()
 				UIDropDownMenu_SetText(classDropdown, ClassLabel(cid))
 				UIDropDownMenu_SetText(subclassDropdown, "All subtypes")
 				subclassDropdown:Show()
-				SaveState(); Refresh()
+				Refresh()
 			end
 			UIDropDownMenu_AddButton(entry)
 		end
@@ -274,7 +268,7 @@ local function InitSubclassDropdown()
 		info.func = function()
 			state.subclassID = nil
 			UIDropDownMenu_SetText(subclassDropdown, "All subtypes")
-			SaveState(); Refresh()
+			Refresh()
 		end
 		UIDropDownMenu_AddButton(info)
 
@@ -291,7 +285,7 @@ local function InitSubclassDropdown()
 			entry.func = function()
 				state.subclassID = sid
 				UIDropDownMenu_SetText(subclassDropdown, SubclassLabel(cid, sid))
-				SaveState(); Refresh()
+				Refresh()
 			end
 			UIDropDownMenu_AddButton(entry)
 		end
@@ -327,12 +321,7 @@ end
 -- ============================================================================
 
 local function CreatePanel()
-	state = state or (TSMVFPCharDB and TSMVFPCharDB.filterState) or Filters.NewState()
-	-- Defensive: re-key any persisted state through NewState so newer fields exist.
-	local defaults = Filters.NewState()
-	for k, v in pairs(defaults) do
-		if state[k] == nil and v ~= nil then state[k] = v end
-	end
+	state = state or Filters.NewState() -- always start fresh; filters reset per vendor visit
 
 	local f = CreateFrame("Frame", "TSMVFP_Panel", UIParent, "BackdropTemplate")
 	f:SetSize(PANEL_W, PANEL_H)
@@ -363,7 +352,7 @@ local function CreatePanel()
 	searchBox:HookScript("OnTextChanged", function(self)
 		local txt = self:GetText() or ""
 		state.nameSubstring = (txt == "" and nil) or txt
-		SaveState(); Refresh()
+		Refresh()
 	end)
 	searchBox:HookScript("OnEnterPressed", function(self) self:ClearFocus() end)
 	searchBox:HookScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -397,11 +386,11 @@ local function CreatePanel()
 
 	ilvlMinBox:SetScript("OnTextChanged", function(self)
 		state.ilvlMin = ParseOptNum(self:GetText())
-		SaveState(); Refresh()
+		Refresh()
 	end)
 	ilvlMaxBox:SetScript("OnTextChanged", function(self)
 		state.ilvlMax = ParseOptNum(self:GetText())
-		SaveState(); Refresh()
+		Refresh()
 	end)
 
 	local reqLabel = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -412,7 +401,7 @@ local function CreatePanel()
 	reqLevelMaxBox:SetText(state.reqLevelMax and tostring(state.reqLevelMax) or "")
 	reqLevelMaxBox:SetScript("OnTextChanged", function(self)
 		state.reqLevelMax = ParseOptNum(self:GetText())
-		SaveState(); Refresh()
+		Refresh()
 	end)
 
 	-- Scroll frame + rows
@@ -474,3 +463,28 @@ end
 function Panel.IsShown() return panelFrame and panelFrame:IsShown() end
 function Panel.GetState() return state end
 function Panel.GetFilteredCount() return #filteredOut end
+
+---Clear all active filters and re-sync the widgets. Called on each MERCHANT_SHOW
+---so a stale filter from a previous vendor doesn't silently hide items at the
+---new one.
+function Panel.ResetFilters()
+	if not state then state = Filters.NewState(); return end
+	-- Reset state in place so any references stay valid.
+	for k in pairs(state) do state[k] = nil end
+
+	if searchBox then searchBox:SetText("") end
+	if qualityDropdown then UIDropDownMenu_SetText(qualityDropdown, QUALITY_CHOICES[1].label) end
+	if classDropdown then UIDropDownMenu_SetText(classDropdown, "All types") end
+	if subclassDropdown then
+		UIDropDownMenu_SetText(subclassDropdown, "All subtypes")
+		subclassDropdown:Hide()
+	end
+	if groupDropdown and groupDropdown.IsShown and groupDropdown:IsShown() then
+		UIDropDownMenu_SetText(groupDropdown, "Any group")
+	end
+	if ilvlMinBox then ilvlMinBox:SetText("") end
+	if ilvlMaxBox then ilvlMaxBox:SetText("") end
+	if reqLevelMaxBox then reqLevelMaxBox:SetText("") end
+
+	Refresh()
+end

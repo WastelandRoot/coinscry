@@ -41,6 +41,7 @@ local function OnMerchantShow()
 	Anchor = Anchor or NS.UI.Anchor
 
 	Scanner.Rescan()
+	if Panel.ResetFilters then Panel.ResetFilters() end -- start each vendor visit fresh
 	Anchor.StartPolling() -- triggers immediate attach via the registered listener
 end
 
@@ -64,6 +65,7 @@ local function OnPlayerLogin()
 		NS.UI.Tab.SetClickHandler(function() NS.UI.Panel.Toggle() end)
 	end
 	if NS.UI.Anchor then
+		NS.UI.Anchor.LoadOverride()
 		NS.UI.Anchor.OnChange(ApplyAnchor)
 	end
 	if NS.ItemCache then
@@ -101,6 +103,8 @@ SlashCmdList["TSMVFP"] = function(msg)
 			end
 			if NS.UI and NS.UI.Anchor then
 				Log("  anchor: %s", NS.UI.Anchor.GetSummary())
+				local ov = NS.UI.Anchor.GetOverride and NS.UI.Anchor.GetOverride()
+				Log("  anchor mode: %s", ov and ("pinned to "..ov) or "auto")
 			end
 		else
 			Log("  no merchant open")
@@ -156,12 +160,32 @@ SlashCmdList["TSMVFP"] = function(msg)
 	elseif msg == "trace" or msg == "trace on" then
 		if NS.UI and NS.UI.Anchor then
 			NS.UI.Anchor.SetVerbose(true)
-			Log("anchor tracing ON")
+			Log("anchor tracing ON (errors will also forward to your error handler)")
 		end
 	elseif msg == "trace off" then
 		if NS.UI and NS.UI.Anchor then
 			NS.UI.Anchor.SetVerbose(false)
 			Log("anchor tracing OFF")
+		end
+	elseif msg == "reset" then
+		if NS.UI and NS.UI.Panel and NS.UI.Panel.ResetFilters then
+			NS.UI.Panel.ResetFilters()
+			Log("filters reset")
+		end
+	elseif msg:find("^anchor%s+") then
+		local sub = msg:match("^anchor%s+(%S+)")
+		if sub == "merchant" or sub == "tsm" then
+			if NS.UI and NS.UI.Anchor then
+				NS.UI.Anchor.SetOverride(sub)
+				Log("anchor pinned to %s (persists across reloads; /tvfp anchor auto to clear)", sub)
+			end
+		elseif sub == "auto" then
+			if NS.UI and NS.UI.Anchor then
+				NS.UI.Anchor.SetOverride(nil)
+				Log("anchor auto-detect re-enabled")
+			end
+		else
+			Log("usage: /tvfp anchor [merchant|tsm|auto]")
 		end
 	elseif msg == "scan" then
 		if not (MerchantFrame and MerchantFrame:IsShown()) then
@@ -190,6 +214,6 @@ SlashCmdList["TSMVFP"] = function(msg)
 			end
 		end
 	else
-		Log("usage: /tvfp [toggle|status|groups|scan|dump|debug]")
+		Log("usage: /tvfp [toggle|status|groups|scan|dump|poll|debug|reset|anchor <merchant|tsm|auto>|trace [on|off]]")
 	end
 end

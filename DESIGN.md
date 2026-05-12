@@ -303,7 +303,7 @@ P0 ships in v0.1 vertical slice. P1 in v0.2. P2+ in v0.3+.
 - F1 (text search), F3 (class), F4 (subclass), F5 (item level), F6 (required level).
 - `UI/Anchor.lua` migrates the tab to TSM's vendor frame when `TSM_API.IsUIVisible("VENDORING")` is true (resolve open question #1).
 - `UI/Themes/ElvUI.lua` implementation; theme picked at load.
-- SavedVariables: remember last filter state per-character + panel open/closed state + which side the panel expands toward.
+- SavedVariables: remember last anchor override (persistent across reloads). **Filter state is reset on each MERCHANT_SHOW** rather than persisted — leaving a filter on across vendor visits hid items at the next vendor and was confusing in testing.
 
 ### M3 — Polish (0.5 day)
 - F8 "can afford only" with extended-cost handling.
@@ -344,7 +344,7 @@ P0 ships in v0.1 vertical slice. P1 in v0.2. P2+ in v0.3+.
 - Set Quality = Rare+, see only rare+ items in the panel's list.
 - Set Group = "<some TSM group>", see only items in that group.
 - Click an item's Buy button, get the item, gold goes down, panel refreshes.
-- Close the merchant → tab + panel hide. Re-open another merchant → tab + panel reappear with last filter state.
+- Close the merchant → tab + panel hide. Re-open another merchant → tab + panel reappear with filters **reset to defaults** (per the M2-B decision; persisting filter state across vendors caused confusion in early testing).
 - No errors in BugSack/BugGrabber across a 20-minute vendor session at three different vendors (general goods, reagent vendor, faction quartermaster).
 - **No-TSM smoke test:** disable TSM in the addons menu, reload, open a vendor — tab + panel appear on `MerchantFrame`, quality filter works, group dropdown is absent, no errors.
 

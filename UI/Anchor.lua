@@ -18,6 +18,13 @@ local pollTicker = nil
 local listeners = {}
 local verbose = false
 local tickCount = 0
+local override = nil -- "merchant" | "tsm" | nil (auto)
+
+local function ReportError(err)
+	if not verbose then return end
+	local h = geterrorhandler()
+	if h then h(err) end
+end
 
 -- Some UIParent children (e.g. CommunitiesAddDialog on Retail/Anniversary)
 -- expose a GetName method via their metatable but the underlying C call
@@ -26,14 +33,16 @@ local tickCount = 0
 local function SafeGetName(frame)
 	if not frame or not frame.GetName then return nil end
 	local ok, name = pcall(frame.GetName, frame)
-	if ok and type(name) == "string" then return name end
+	if not ok then ReportError(name); return nil end
+	if type(name) == "string" then return name end
 	return nil
 end
 
 local function SafeIsShown(frame)
 	if not frame or not frame.IsShown then return false end
 	local ok, shown = pcall(frame.IsShown, frame)
-	return ok and shown == true
+	if not ok then ReportError(shown); return false end
+	return shown == true
 end
 
 ---Returns an iterator over visible UIParent children whose name matches the
@@ -73,6 +82,8 @@ end
 ---@return Frame|nil the frame our tab + panel should attach to
 local function PickAnchor()
 	if not (MerchantFrame and MerchantFrame:IsShown()) then return nil end
+	if override == "merchant" then return MerchantFrame end
+	if override == "tsm" then return FindTSMVendoringFrame() end -- strict; nil if not found
 	return FindTSMVendoringFrame() or MerchantFrame
 end
 
@@ -170,6 +181,24 @@ function Anchor.StopPolling()
 	if currentAnchor ~= nil then
 		currentAnchor = nil
 		NotifyChanged()
+	end
+end
+
+---Override the auto-detected anchor. Pass nil to return to auto.
+---@param o "merchant"|"tsm"|nil
+function Anchor.SetOverride(o)
+	override = (o == "merchant" or o == "tsm") and o or nil
+	if TSMVFPCharDB then TSMVFPCharDB.anchorOverride = override end
+	Reattach() -- apply immediately
+end
+
+---@return string|nil
+function Anchor.GetOverride() return override end
+
+---Load persisted override from SavedVariables. Call once after VARIABLES_LOADED.
+function Anchor.LoadOverride()
+	if TSMVFPCharDB and TSMVFPCharDB.anchorOverride then
+		override = TSMVFPCharDB.anchorOverride
 	end
 end
 
