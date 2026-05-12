@@ -68,7 +68,11 @@ function Scanner.Rescan()
 	local n = GetMerchantNumItems() or 0
 	for i = 1, n do
 		local link = GetMerchantItemLink(i)
-		local name, texture, price, stackCount, numAvailable, isUsable =
+		-- Retail-era signature (Anniversary): name, texture, price, stackCount,
+		-- numAvailable, isPurchasable, isUsable, extendedCost. isPurchasable is
+		-- always true for items at a vendor, so reading position 6 as isUsable
+		-- always came back truthy. The actual "can use" flag is position 7.
+		local name, texture, price, stackCount, numAvailable, _, isUsable =
 			GetMerchantItemInfo(i)
 		-- GetMerchantItemCostInfo gives the count of *currency/token* costs;
 		-- the `extendedCost` flag from GetMerchantItemInfo is unreliable (flags non-currency oddities too).
