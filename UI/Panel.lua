@@ -60,6 +60,13 @@ end
 
 -- Static popup for right-click quantity-buy. Defined once at module load;
 -- the OnAccept closure captures BuyRow above.
+-- TBC Anniversary's StaticPopup uses retail-era member names: self.EditBox
+-- (capital E) rather than the classic-era self.editBox. Helper that grabs
+-- whichever is present so the dialog works across forks.
+local function PopupEditBox(self)
+	return self.EditBox or self.editBox
+end
+
 StaticPopupDialogs["TSMVFP_BUY_QTY"] = {
 	text = "Buy how many?\n%s",
 	button1 = ACCEPT,
@@ -69,33 +76,30 @@ StaticPopupDialogs["TSMVFP_BUY_QTY"] = {
 	timeout = 0,
 	whileDead = 1,
 	hideOnEscape = 1,
-	enterClicksFirstButton = 1,
+	enterClicksFirstButton = 1, -- modern WoW handles Enter -> button1 automatically
 	OnShow = function(self)
 		local row = self.data
 		local default = (row and row.stackCount) or 1
 		if row and row.numAvailable and row.numAvailable > 0 then
 			default = math.min(default, row.numAvailable)
 		end
-		self.editBox:SetText(tostring(default))
-		self.editBox:SetNumeric(true)
-		self.editBox:HighlightText()
-		self.editBox:SetFocus()
+		local eb = PopupEditBox(self)
+		if not eb then return end
+		eb:SetText(tostring(default))
+		eb:SetNumeric(true)
+		eb:HighlightText()
+		eb:SetFocus()
 	end,
 	OnAccept = function(self)
 		local row = self.data
 		if not row then return end
-		local qty = tonumber(self.editBox:GetText() or "")
+		local eb = PopupEditBox(self)
+		local qty = tonumber((eb and eb:GetText()) or "")
 		if not qty or qty < 1 then return end
 		if row.numAvailable and row.numAvailable > 0 then
 			qty = math.min(qty, row.numAvailable)
 		end
 		BuyRow(row, qty)
-	end,
-	EditBoxOnEnterPressed = function(self)
-		local parent = self:GetParent()
-		if parent and parent.button1 and parent.button1:IsEnabled() then
-			StaticPopup_OnClick(parent, 1)
-		end
 	end,
 	EditBoxOnEscapePressed = function(self) self:GetParent():Hide() end,
 }
