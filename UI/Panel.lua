@@ -21,7 +21,7 @@ local MIN_PANEL_H = TOP_RESERVED + 3 * ROW_H + BOT_RESERVED -- enough for header
 -- Column geometry. Icon + qty + ilvl + cost are fixed-width;
 -- Name fills the remaining horizontal space.
 local COL_ICON_W = 20
-local COL_QTY_W  = 28 -- "x1" / "xN" buy-qty preview prefix
+local COL_QTY_W  = 36 -- "x1" / "xN" buy-qty preview prefix (fits up to "x999")
 local COL_ILVL_W = 40
 local COL_COST_W = 100
 local COL_RIGHT_PAD = 4 -- inside-the-row pad on the right
@@ -54,14 +54,27 @@ local function QualityLabelFor(value)
 	return QUALITY_CHOICES[1].label
 end
 
+-- TSM-style money colors: numbers white, denomination letters tinted.
+local PRICE_NUM = "|cffffffff"
+local PRICE_G   = "|cffffd70a"
+local PRICE_S   = "|cffc0c0c0"
+local PRICE_C   = "|cffcc8a3f"
+local PRICE_END = "|r"
+
 local function FormatPrice(copper)
 	if not copper or copper == 0 then return "" end
 	local g = math.floor(copper / 10000)
 	local s = math.floor((copper % 10000) / 100)
 	local c = copper % 100
-	if g > 0 then return ("%dg %ds %dc"):format(g, s, c) end
-	if s > 0 then return ("%ds %dc"):format(s, c) end
-	return ("%dc"):format(c)
+	local out = {}
+	if g > 0 then
+		out[#out + 1] = PRICE_NUM .. g .. PRICE_END .. PRICE_G .. "g" .. PRICE_END
+	end
+	if g > 0 or s > 0 then
+		out[#out + 1] = PRICE_NUM .. s .. PRICE_END .. PRICE_S .. "s" .. PRICE_END
+	end
+	out[#out + 1] = PRICE_NUM .. c .. PRICE_END .. PRICE_C .. "c" .. PRICE_END
+	return table.concat(out, " ")
 end
 
 local function BuyRow(row, qty)
@@ -149,11 +162,12 @@ local function CreateRow(parent, i, anchorTo)
 	r.qty:SetJustifyH("LEFT")
 
 	-- Cost (rightmost) — anchored to row right with internal padding.
+	-- Inline color codes handle per-denomination tinting; base color is white
+	-- so the digits show through cleanly.
 	r.price = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	r.price:SetPoint("RIGHT", r, "RIGHT", -COL_RIGHT_PAD, 0)
 	r.price:SetWidth(COL_COST_W)
 	r.price:SetJustifyH("RIGHT")
-	r.price:SetTextColor(1, 0.82, 0)
 
 	-- iLvl (second-from-right) — left of price.
 	r.ilvl = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
