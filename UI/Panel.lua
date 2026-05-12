@@ -510,23 +510,27 @@ local function CreatePanel()
 	end)
 
 	-- Row 4: filter checkboxes, chained so labels don't overlap regardless of
-	-- text length. The first one is positioned by absolute (x, y); each
-	-- subsequent one anchors after the previous checkbox's label.
-	local CHAIN_GAP = 14
+	-- text length. ChatConfigCheckButtonTemplate's .Text FontString has a wider
+	-- internal frame than its rendered text, so anchoring LEFT-to-RIGHT of the
+	-- label puts the next checkbox far past where text actually ends. Use the
+	-- measured GetStringWidth() to position explicitly.
+	local CHECKBOX_W = 20
+	local LABEL_PAD = 4 -- gap between checkbox right edge and label left edge
+	local CHAIN_GAP = 16 -- gap between previous label end and next checkbox
 	local function MakeFilterCheckbox(text, prevOrX, y, getter, setter)
 		local c = CreateFrame("CheckButton", nil, f, "ChatConfigCheckButtonTemplate")
-		c:SetSize(20, 20)
-		local label = c.Text or _G[(c:GetName() or "") .. "Text"]
-		if not label then
-			label = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-			label:SetPoint("LEFT", c, "RIGHT", 2, 1)
-		end
+		c:SetSize(CHECKBOX_W, CHECKBOX_W)
+		-- Use our own FontString so we control its placement and can measure it.
+		if c.Text then c.Text:Hide() end
+		local label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		label:SetText(text)
+		label:SetPoint("LEFT", c, "RIGHT", LABEL_PAD, 1)
 		c.label = label
 		if type(prevOrX) == "number" then
 			c:SetPoint("TOPLEFT", f, "TOPLEFT", prevOrX, y)
 		else
-			c:SetPoint("LEFT", prevOrX.label, "RIGHT", CHAIN_GAP, -1)
+			local prevWidth = (prevOrX.label and prevOrX.label.GetStringWidth and prevOrX.label:GetStringWidth()) or 70
+			c:SetPoint("TOPLEFT", prevOrX, "TOPLEFT", CHECKBOX_W + LABEL_PAD + prevWidth + CHAIN_GAP, 0)
 		end
 		c:SetChecked(getter() and true or false)
 		c:SetScript("OnClick", function(self)
