@@ -241,10 +241,21 @@ end
 
 local function UpdateSortIndicators()
 	if not hdrName then return end
-	local arrow = state and state.sortAscending ~= false and "▲" or "▼"
-	hdrName.indicator:SetText(state and state.sortKey == "name" and arrow or "")
-	hdrIlvl.indicator:SetText(state and state.sortKey == "itemLevel" and arrow or "")
-	hdrCost.indicator:SetText(state and state.sortKey == "price" and arrow or "")
+	local function apply(header, key)
+		if state and state.sortKey == key then
+			header.indicator:Show()
+			if state.sortAscending ~= false then
+				header.indicator:SetTexCoord(0, 1, 0, 1) -- normal: arrow up
+			else
+				header.indicator:SetTexCoord(0, 1, 1, 0) -- flipped: arrow down
+			end
+		else
+			header.indicator:Hide()
+		end
+	end
+	apply(hdrName, "name")
+	apply(hdrIlvl, "itemLevel")
+	apply(hdrCost, "price")
 end
 
 local function Refresh()
@@ -676,18 +687,31 @@ local function CreatePanel()
 	local function MakeHeader(text, justify)
 		local b = CreateFrame("Button", nil, headerRow)
 		b:SetHeight(HEADER_H)
+
+		-- Anchor the label on the justify side only so its frame is exactly as
+		-- wide as the rendered text. That lets the sort-indicator texture
+		-- anchor immediately adjacent to the text (not to the column edge).
 		b.label = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-		b.label:SetPoint("LEFT", b, "LEFT", 0, 0)
-		b.label:SetPoint("RIGHT", b, "RIGHT", 0, 0)
-		b.label:SetJustifyH(justify)
 		b.label:SetText(text)
-		b.indicator = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		if justify == "RIGHT" then
+			b.label:SetPoint("RIGHT", b, "RIGHT", 0, 0)
+		else
+			b.label:SetPoint("LEFT", b, "LEFT", 0, 0)
+		end
+		b.label:SetJustifyH(justify)
+
+		-- UI-SortArrow is the standard Blizzard up-arrow texture; we flip its
+		-- TexCoord vertically when the sort is descending.
+		b.indicator = b:CreateTexture(nil, "OVERLAY")
+		b.indicator:SetSize(10, 10)
+		b.indicator:SetTexture("Interface\\Buttons\\UI-SortArrow")
 		if justify == "RIGHT" then
 			b.indicator:SetPoint("RIGHT", b.label, "LEFT", -2, 0)
 		else
-			b.indicator:SetPoint("LEFT", b.label, "RIGHT", 4, 0)
+			b.indicator:SetPoint("LEFT", b.label, "RIGHT", 3, 0)
 		end
-		b.indicator:SetText("")
+		b.indicator:Hide()
+
 		b:SetScript("OnEnter", function(self) self.label:SetTextColor(1, 1, 0.6) end)
 		b:SetScript("OnLeave", function(self) self.label:SetTextColor(1, 1, 1) end)
 		return b
