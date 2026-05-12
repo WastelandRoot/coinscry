@@ -1,6 +1,12 @@
-# coinscry — Design
+# Coinscry — Design
 
-Status: **draft, pre-implementation** (2026-05-11)
+> **Note:** This document is a snapshot of the architecture and milestone
+> planning from when the addon was being built. Some scope estimates,
+> milestone numbering (M0 → M4), and "open questions" are now historical —
+> see [`CHANGELOG.md`](CHANGELOG.md) for what actually shipped. The
+> architecture sections (especially §3, on why TSM can't be injected into
+> directly) are still current and useful context for contributors.
+
 Target client: WoW TBC Anniversary, Interface `20505`
 Repo: `git.kal.run/kaltec/coinscry`
 

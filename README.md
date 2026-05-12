@@ -1,32 +1,35 @@
-# coinscry
+# Coinscry
 
-Vendor-browsing filters for World of Warcraft TBC Anniversary. Built primarily as a companion for [TradeSkillMaster](https://www.tradeskillmaster.com/), but works standalone too.
+Vendor-browsing filters for World of Warcraft TBC Anniversary. Best paired with [TradeSkillMaster](https://www.tradeskillmaster.com/), works standalone too.
 
-TSM ships its vendor filter button as a stub (`-- TODO`), so vendor browsing on TSM is text-search only. This addon fills in the gap with quality, item-type, item-level, affordability, already-known, and demon-type filters — and, when TSM is loaded, **TSM-group filtering** (the unique value-add).
+TSM ships its vendor filter button as a stub (literal `-- TODO` in `Core/UI/VendoringUI/Buy.lua`), so vendor browsing inside TSM is text-search only. Coinscry adds quality, item-type, item-level, affordability, can-use, already-known, demon-type, and TSM-group filters via a side tab + slide-out panel that follows whichever vendor frame (TSM's or Blizzard's) is in front.
 
-## Target
+## Installation
 
-- World of Warcraft **TBC Anniversary** client (Interface `20505`).
-- `TradeSkillMaster` is recommended (enables the group filter and the dual-anchor UI) but **not required**. Without TSM, the addon attaches to the standard Blizzard merchant window and provides all non-group filters.
+1. Download the latest release (or clone this repo into your AddOns folder).
+2. Copy the `coinscry` folder into `<WoW>/_anniversary_/Interface/AddOns/`. The final path should look like `…/AddOns/coinscry/coinscry.toc`.
+3. Launch the game. You should see Coinscry in your AddOns list (with the logo as its icon).
 
-## Filters
+Requires WoW **TBC Anniversary** client (Interface `20505`). TradeSkillMaster is an **optional dependency** — without it, all non-group filters still work and the addon attaches to Blizzard's merchant frame only. ElvUI is detected at load; if present, panel and widgets pick up ElvUI's skinning automatically.
 
-- **Search** — case-insensitive substring on item names
-- **Quality** — Common+ through Legendary
-- **Type / Subtype** — Armor (Cloth/Leather/Mail/Plate), Weapon (1H Sword/Polearm/Bow/…), Consumable, Trade Goods, Recipe, etc. Auto-populated from items present at the current vendor.
-- **Item level** — min / max range
-- **Required level** — max
-- **TSM group** — exact match against a TSM group path (requires TSM)
-- **Affordable** — checks both gold and any extended-cost items/currencies
-- **Can use** — hides items the player doesn't meet level / class / weapon-skill requirements for (uses WoW's `IsUsableItem` plus a level check)
-- **Hide known** — covers profession recipes (player spellbook) and warlock demon tomes (currently-summoned pet's spellbook)
+## Features
+
+- **Search** — case-insensitive substring on item names.
+- **Quality** — Common+ through Legendary.
+- **Item type / subtype** — Armor (Cloth/Leather/Mail/Plate), Weapon (1H Sword / Polearm / Bow / …), Consumable, Trade Goods, Recipe, etc. Auto-populated from items present at the current vendor.
+- **Item level** — min / max range.
+- **Required level** — max.
+- **TSM group** — exact match against a TSM group path (requires TSM).
+- **Affordable** — checks both gold and any extended-cost items/currencies.
+- **Can use** — hides items WoW marks as red in the merchant frame (wrong class, wrong armor / weapon proficiency, level too low, missing profession, etc.). Driven by `GetMerchantItemInfo`'s `isUsable` flag, so it matches WoW's own determination exactly.
+- **Hide already known** — recipes the player has learned, and warlock demon tomes the currently-summoned pet has learned.
 - **Demon type** — Imp / Voidwalker / Succubus / Felhunter / Felguard. Contextual: only appears at vendors selling warlock demon tomes.
 
 ## Buying from the filtered list
 
 - **Left-click** a row — buys 1
 - **Shift-left-click** — buys a full stack (e.g., 200 arrows)
-- **Right-click** — opens a quantity dialog (defaults to the stack size, capped at the merchant's remaining supply for limited items)
+- **Right-click** — quantity dialog (defaults to the stack size, capped at the merchant's remaining supply for limited items)
 
 ## Slash commands
 
@@ -35,28 +38,31 @@ TSM ships its vendor filter button as a stub (`-- TODO`), so vendor browsing on 
 - `/coinscry reset` — clear all active filters
 - `/coinscry anchor [merchant|tsm|auto]` — manually pin the anchor or return to auto-detect
 - `/coinscry trace [on|off]` — log anchor switches to chat (diagnostic)
-- `/coinscry status` / `/coinscry poll` / `/coinscry dump` / `/coinscry groups` / `/coinscry scan` — diagnostics
+- `/coinscry status` / `poll` / `dump` / `groups` / `scan` / `debug` / `theme` — diagnostics
 
 ## Known limitations
 
-### Locale: English-only text patterns
+### Demon-type filter is English-only
 
-A few filters depend on parsing English tooltip text:
+The demon-type filter matches `Teaches Imp …` / `Teaches Voidwalker …` etc. in the item tooltip. On non-English clients the word "Teaches" and/or the demon name is localized, so the pattern doesn't match and the dropdown won't appear at warlock trainers. PRs welcome adding patterns for other locales in `Scanner.lua`.
 
-- **Demon-type filter** matches `Teaches Imp …` / `Teaches Voidwalker …` etc. in the item tooltip. On non-English clients, the word "Teaches" and/or the demon name will be localized, so the pattern will not match and `row.demonType` stays nil. The dropdown will simply not appear at warlock trainers, and the filter as a whole degrades to "off."
-- **Already known** uses WoW's own `ITEM_SPELL_KNOWN` constant, which IS localized — so this filter works on all locales out of the box.
-
-If you run a non-English client and want demon-type detection, file an issue or PR with the appropriate `Teaches <Demon>` patterns for your locale and we'll add them to the allow-list in `Scanner.lua`.
+The other filters use WoW's localized internals (e.g., `ITEM_SPELL_KNOWN` for already-known) and work on all locales out of the box.
 
 ### Warlock demon tomes: only the currently summoned demon is checked
 
-The WoW API only exposes the spellbook of the **currently summoned** pet. So "Hide already known" can correctly hide tomes the *summoned* demon already knows, but tomes for other demons (e.g., a Voidwalker tome while you have your Imp out) will always appear as not-yet-known — even if your Voidwalker has actually learned them.
+The WoW API only exposes the currently summoned pet's spellbook. "Hide already known" can correctly hide tomes the summoned demon already knows, but tomes for other demons (e.g., a Voidwalker tome while you have your Imp out) always appear unknown — the API can't see Voidwalker's spellbook unless Voidwalker is the active pet.
 
 Standard workflow: summon the relevant demon before visiting that demon's trainer.
 
-### TSM vendor frame disambiguation
+### Multiple TSM application UIs
 
-When you have multiple TSM application UIs open at once (Vendoring + Crafting, etc.), the anchor logic picks the first matching `TSM_FRAME:LargeApplicationFrame:*` it finds — there's no clean way to distinguish them from outside TSM. In practice this is rare; if you hit it, pin manually with `/coinscry anchor merchant` or `/coinscry anchor tsm`.
+If you have multiple TSM application UIs open at once (Vendoring + Crafting, for example), the anchor logic picks the first matching `TSM_FRAME:LargeApplicationFrame:*` it finds — TSM doesn't expose a way to distinguish them from outside. In practice this is rare; if it bites you, pin the anchor manually with `/coinscry anchor merchant` or `/coinscry anchor tsm`.
+
+## Development
+
+Active development happens on [Forgejo at git.kal.run/kaltec/coinscry](https://git.kal.run/kaltec/coinscry); GitHub is the release mirror.
+
+Issues and pull requests welcome on either platform. See [`DESIGN.md`](DESIGN.md) for the architecture rationale (especially §3, which covers why the addon is a companion overlay rather than something injected into TSM's vendor frame).
 
 ## License
 
