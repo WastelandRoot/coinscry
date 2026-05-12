@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest an enhancement or new filter / display option.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: A concrete vendor scenario where the current addon falls short works better than an abstract description of the feature.
+      placeholder: e.g. "When buying arrows from a quartermaster I have to mentally divide cost by stack size to know the per-arrow cost — would love a cost-per-unit column."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like Coinscry to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Existing addons / TSM features / workflows that partially solve this.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Where would this fit?
+      multiple: true
+      options:
+        - New filter
+        - New column / row data
+        - Display / layout change
+        - Slash command
+        - Settings option
+        - TSM integration
+        - ElvUI integration
+        - Other (explain below)
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else?

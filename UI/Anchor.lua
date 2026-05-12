@@ -20,20 +20,11 @@ local verbose = false
 local tickCount = 0
 local override = nil -- "merchant" | "tsm" | nil (auto)
 
-local function ReportError(err)
-	if not verbose then return end
-	local h = geterrorhandler()
-	if h then h(err) end
-end
-
 -- Some UIParent children (e.g. CommunitiesAddDialog on Retail/Anniversary)
--- expose a GetName method via their metatable but the underlying C call
--- errors with "bad self" when invoked. Always use pcall to probe frames
--- we don't control.
--- Swallow errors silently here; we routinely iterate UIParent children that
--- expose GetName/IsShown via __index but reject the underlying C call. Those
--- are expected and frequent — surfacing them to the error handler floods it.
--- Use ReportError() in code paths where a pcall failure is genuinely unexpected.
+-- expose GetName / IsShown methods via __index but the underlying C calls
+-- reject the call with "bad self". We routinely iterate UIParent children
+-- to locate the TSM vendor frame, so swallow these silently — surfacing
+-- them to the error handler would flood it.
 local function SafeGetName(frame)
 	if not frame or not frame.GetName then return nil end
 	local ok, name = pcall(frame.GetName, frame)
@@ -77,10 +68,8 @@ local function FindTSMVendoringFrame()
 	-- outside, but the user almost never has those open at a vendor, so the
 	-- first match wins. If this becomes a real problem, a /coinscry anchor cycle
 	-- command can let the user pick.
-	for child in IterateTSMFrames() do
-		return child
-	end
-	return nil
+	local child = IterateTSMFrames()()
+	return child
 end
 
 ---@return Frame|nil the frame our tab + panel should attach to

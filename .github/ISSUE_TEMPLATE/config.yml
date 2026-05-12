@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: CurseForge page
+    url: https://www.curseforge.com/wow/addons/coinscry
+    about: Download / install instructions live here.
+  - name: README
+    url: https://github.com/WastelandRoot/coinscry#readme
+    about: Slash commands, filter list, known limitations.

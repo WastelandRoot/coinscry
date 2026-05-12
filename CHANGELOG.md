@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.5.1 — 2026-05-12
+
+**Hardening release before opening the project to outside contributors. No user-visible features.**
+
+- **Perf: dropdowns no longer rebuild on every panel show.** `Panel.ShowVisible` was re-running `InitClassDropdown` / `InitSubclassDropdown` / `InitDemonDropdown` every time the panel surfaced — including the Buyback↔Merchant tab toggle in embed mode, which was wasteful since the merchant inventory hadn't changed. Inventory-driven re-init now hooks `MERCHANT_SHOW` / `MERCHANT_UPDATE` via a new `Panel.OnMerchantInventoryChange()` export, and only the demon dropdown (whose visibility depends on what the vendor sells) rebuilds.
+- **Repo: GitHub issue forms** for bug reports and feature requests (`.github/ISSUE_TEMPLATE/`). Required fields catch the things I'd normally have to ask about first.
+- **Repo: luacheck CI** runs on every push and PR (`.github/workflows/lint.yml`). `.luacheckrc` declares the addon's own globals; reads of Blizzard API surface are tolerated.
+- **Repo: `CONTRIBUTING.md`** with setup, style, lint, manual-test matrix, and PR guidance.
+- **Repo: `ROADMAP.md`** sketching four candidate features for a future v0.6 (TSM market-value column, wishlist, stack-buy planner, filter presets).
+
 ## v0.5.0 — 2026-05-12
 
 **M3-F — collapsible filters + tighter default layout.**
