@@ -19,6 +19,23 @@ local listeners = {}
 local verbose = false
 local tickCount = 0
 
+-- Some UIParent children (e.g. CommunitiesAddDialog on Retail/Anniversary)
+-- expose a GetName method via their metatable but the underlying C call
+-- errors with "bad self" when invoked. Always use pcall to probe frames
+-- we don't control.
+local function SafeGetName(frame)
+	if not frame or not frame.GetName then return nil end
+	local ok, name = pcall(frame.GetName, frame)
+	if ok and type(name) == "string" then return name end
+	return nil
+end
+
+local function SafeIsShown(frame)
+	if not frame or not frame.IsShown then return false end
+	local ok, shown = pcall(frame.IsShown, frame)
+	return ok and shown == true
+end
+
 ---Returns an iterator over visible UIParent children whose name matches the
 ---TSM LargeApplicationFrame pattern. Use for both detection and debug dumps.
 local function IterateTSMFrames()
@@ -29,8 +46,8 @@ local function IterateTSMFrames()
 			i = i + 1
 			local child = children[i]
 			if not child then return nil end
-			local name = child.GetName and child:GetName() or nil
-			if name and child.IsShown and child:IsShown() and name:find(TSM_FRAME_PATTERN) then
+			local name = SafeGetName(child)
+			if name and SafeIsShown(child) and name:find(TSM_FRAME_PATTERN) then
 				return child, name
 			end
 		end
@@ -69,12 +86,12 @@ function Anchor.Probe()
 	end
 	lines[#lines + 1] = "  MerchantFrame:IsShown(): " .. tostring(MerchantFrame and MerchantFrame:IsShown())
 	local tsmFrame = FindTSMVendoringFrame()
-	lines[#lines + 1] = "  FindTSMVendoringFrame -> " .. (tsmFrame and (tsmFrame:GetName() or "?") or "nil")
+	lines[#lines + 1] = "  FindTSMVendoringFrame -> " .. (tsmFrame and (SafeGetName(tsmFrame) or "?") or "nil")
 	local picked = PickAnchor()
-	lines[#lines + 1] = "  PickAnchor -> " .. (picked and (picked:GetName() or "?") or "nil")
+	lines[#lines + 1] = "  PickAnchor -> " .. (picked and (SafeGetName(picked) or "?") or "nil")
 	lines[#lines + 1] = "  pollTicker active: " .. tostring(pollTicker ~= nil)
 	lines[#lines + 1] = "  Reattach call count: " .. tickCount
-	lines[#lines + 1] = "  current anchor: " .. (currentAnchor and (currentAnchor:GetName() or "?") or "nil")
+	lines[#lines + 1] = "  current anchor: " .. (currentAnchor and (SafeGetName(currentAnchor) or "?") or "nil")
 	return table.concat(lines, "\n")
 end
 
@@ -110,10 +127,13 @@ function Anchor.GetTickCount() return tickCount end
 
 local function DescribeFrame(f)
 	if not f then return "nil" end
-	local name = (f.GetName and f:GetName()) or "<unnamed>"
-	local visible = (f.IsShown and f:IsShown()) and "shown" or "hidden"
+	local name = SafeGetName(f) or "<unnamed>"
+	local visible = SafeIsShown(f) and "shown" or "hidden"
 	local cx, cy = nil, nil
-	if f.GetCenter then cx, cy = f:GetCenter() end
+	if f.GetCenter then
+		local ok, x, y = pcall(f.GetCenter, f)
+		if ok then cx, cy = x, y end
+	end
 	return ("%s [%s, center=(%s,%s)]"):format(name, visible, tostring(cx and math.floor(cx)), tostring(cy and math.floor(cy)))
 end
 
@@ -156,7 +176,7 @@ end
 ---@return string a one-line summary for /tvfp status / debug
 function Anchor.GetSummary()
 	if not currentAnchor then return "no anchor" end
-	local name = currentAnchor.GetName and currentAnchor:GetName() or "<unnamed>"
-	local isTSM = name and name:find(TSM_FRAME_PATTERN) and "TSM" or "Merchant"
-	return ("%s (%s)"):format(isTSM, name or "?")
+	local name = SafeGetName(currentAnchor) or "<unnamed>"
+	local isTSM = name:find(TSM_FRAME_PATTERN) and "TSM" or "Merchant"
+	return ("%s (%s)"):format(isTSM, name)
 end
