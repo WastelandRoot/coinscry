@@ -100,6 +100,9 @@ Coinscry:RegisterEvent("PLAYER_LOGIN")
 Coinscry:RegisterEvent("MERCHANT_SHOW")
 Coinscry:RegisterEvent("MERCHANT_UPDATE")
 Coinscry:RegisterEvent("MERCHANT_CLOSED")
+-- Track shift so the panel's per-row buy-qty preview ("x1" vs "xStackSize")
+-- updates live as the modifier is pressed/released.
+Coinscry:RegisterEvent("MODIFIER_STATE_CHANGED")
 -- These don't affect what's *for sale*, but they change whether each row is
 -- affordable / already known. We don't register them globally — only while
 -- the merchant is open — to avoid burning event traffic when irrelevant.
@@ -113,7 +116,7 @@ local function UnregisterLiveRefresh()
 	for _, ev in ipairs(LIVE_REFRESH_EVENTS) do Coinscry:UnregisterEvent(ev) end
 end
 
-Coinscry:SetScript("OnEvent", function(_, event)
+Coinscry:SetScript("OnEvent", function(_, event, arg1)
 	if event == "PLAYER_LOGIN" then OnPlayerLogin()
 	elseif event == "MERCHANT_SHOW" then
 		OnMerchantShow()
@@ -122,6 +125,12 @@ Coinscry:SetScript("OnEvent", function(_, event)
 	elseif event == "MERCHANT_CLOSED" then
 		UnregisterLiveRefresh()
 		OnMerchantClosed()
+	elseif event == "MODIFIER_STATE_CHANGED" then
+		-- arg1 = key name ("LSHIFT" / "RSHIFT" / "LCTRL" / etc.)
+		if (arg1 == "LSHIFT" or arg1 == "RSHIFT")
+			and NS.UI and NS.UI.Panel and NS.UI.Panel.IsShown and NS.UI.Panel.IsShown() then
+			NS.UI.Panel.Refresh()
+		end
 	else
 		-- Live-refresh trigger: re-evaluate filter state.
 		-- SPELLS_CHANGED also fires when the pet's spellbook updates (summoning

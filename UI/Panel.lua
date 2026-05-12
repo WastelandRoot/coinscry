@@ -18,9 +18,10 @@ local PANEL_H = TOP_RESERVED + DEFAULT_VISIBLE_ROWS * ROW_H + BOT_RESERVED
 local MIN_PANEL_W = 420
 local MIN_PANEL_H = TOP_RESERVED + 3 * ROW_H + BOT_RESERVED -- enough for header + 3 rows + bottom hint
 
--- Column geometry. Icon + ilvl + cost are fixed-width and right-aligned;
+-- Column geometry. Icon + qty + ilvl + cost are fixed-width;
 -- Name fills the remaining horizontal space.
 local COL_ICON_W = 20
+local COL_QTY_W  = 28 -- "x1" / "xN" buy-qty preview prefix
 local COL_ILVL_W = 40
 local COL_COST_W = 100
 local COL_RIGHT_PAD = 4 -- inside-the-row pad on the right
@@ -140,6 +141,13 @@ local function CreateRow(parent, i, anchorTo)
 	r.icon:SetSize(ROW_H - 4, ROW_H - 4)
 	r.icon:SetPoint("LEFT", r, "LEFT", 2, 0)
 
+	-- Buy-qty preview: 'x1' default, 'xN' (stackCount) when Shift is held.
+	-- Reserves a fixed-width slot so the Name column doesn't jitter on modifier change.
+	r.qty = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	r.qty:SetPoint("LEFT", r.icon, "RIGHT", COL_GAP, 0)
+	r.qty:SetWidth(COL_QTY_W)
+	r.qty:SetJustifyH("LEFT")
+
 	-- Cost (rightmost) — anchored to row right with internal padding.
 	r.price = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	r.price:SetPoint("RIGHT", r, "RIGHT", -COL_RIGHT_PAD, 0)
@@ -153,9 +161,9 @@ local function CreateRow(parent, i, anchorTo)
 	r.ilvl:SetWidth(COL_ILVL_W)
 	r.ilvl:SetJustifyH("RIGHT")
 
-	-- Name fills the rest, between icon and ilvl.
+	-- Name fills the rest, between qty and ilvl.
 	r.name = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	r.name:SetPoint("LEFT", r.icon, "RIGHT", COL_GAP, 0)
+	r.name:SetPoint("LEFT", r.qty, "RIGHT", 2, 0)
 	r.name:SetPoint("RIGHT", r.ilvl, "LEFT", -COL_GAP, 0)
 	r.name:SetJustifyH("LEFT")
 	r.name:SetWordWrap(false)
@@ -202,6 +210,7 @@ local function UpdateRows()
 	if not panelFrame or not panelFrame:IsShown() then return end
 	local offset = FauxScrollFrame_GetOffset(scrollFrame) or 0
 	local visible = VisibleRowCount()
+	local shiftHeld = IsShiftKeyDown and IsShiftKeyDown() or false
 	for i = 1, MAX_ROWS do
 		local w = rowWidgets[i]
 		if i > visible then
@@ -215,6 +224,7 @@ local function UpdateRows()
 				w.alt = (dataIdx % 2 == 0)
 				w.bg:SetColorTexture(1, 1, 1, w.alt and 0.04 or 0)
 				w.icon:SetTexture(data.texture or "Interface\\Icons\\INV_Misc_QuestionMark")
+				w.qty:SetText("x" .. (shiftHeld and (data.stackCount or 1) or 1))
 				local cr, cg, cb = Theme.QualityColor(data.quality)
 				w.name:SetTextColor(cr, cg, cb)
 				w.name:SetText(data.name or "...")
