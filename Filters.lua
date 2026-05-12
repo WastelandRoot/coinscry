@@ -15,6 +15,8 @@ NS.Filters = Filters
 ---@field canUseOnly? boolean only show items the player meets level + class/proficiency requirements for
 ---@field hideAlreadyKnown? boolean hide spell-teaching items the player or current pet already knows
 ---@field demonType? string only show warlock-tome rows whose Teaches line names this demon (Imp/Voidwalker/Felhunter/Succubus/Felguard)
+---@field sortKey? string column key to sort by: "name" / "itemLevel" / "price"; nil = vendor order
+---@field sortAscending? boolean default true when sortKey is set
 
 ---Default empty filter state — no filters applied.
 function Filters.NewState()
@@ -31,6 +33,8 @@ function Filters.NewState()
 		canUseOnly       = nil,
 		hideAlreadyKnown = nil,
 		demonType        = nil,
+		sortKey          = nil,
+		sortAscending    = nil,
 	}
 end
 
@@ -152,6 +156,33 @@ function Filters.Apply(rows, state, out)
 		end
 	end
 	return out
+end
+
+-- Sort-key projection functions. Adding a new sort column means adding a key
+-- here and a matching header button in the panel.
+local SORT_KEY_FN = {
+	name      = function(r) return (r.name or ""):lower() end,
+	itemLevel = function(r) return r.itemLevel or 0 end,
+	price     = function(r) return r.price or 0 end,
+}
+
+---Sort `rows` in-place by the named key. Pass `ascending=false` for descending.
+---No-op if sortKey is nil or unrecognized.
+---@param rows table list to sort
+---@param sortKey? string one of: "name" / "itemLevel" / "price"
+---@param ascending? boolean default true
+function Filters.SortRows(rows, sortKey, ascending)
+	if not sortKey then return rows end
+	local keyFn = SORT_KEY_FN[sortKey]
+	if not keyFn then return rows end
+	local asc = ascending ~= false
+	table.sort(rows, function(a, b)
+		local ka, kb = keyFn(a), keyFn(b)
+		if ka == kb then return false end
+		if asc then return ka < kb end
+		return ka > kb
+	end)
+	return rows
 end
 
 ---Distinct (classID, subclassID) pairs present in the scan, used to populate dropdowns.

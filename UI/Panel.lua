@@ -217,9 +217,21 @@ local function UpdateRows()
 	FauxScrollFrame_Update(scrollFrame, #filteredOut, NUM_VISIBLE_ROWS, ROW_H)
 end
 
+local function UpdateSortIndicators()
+	if not hdrName then return end
+	local arrow = state and state.sortAscending ~= false and "▲" or "▼"
+	hdrName.indicator:SetText(state and state.sortKey == "name" and arrow or "")
+	hdrIlvl.indicator:SetText(state and state.sortKey == "itemLevel" and arrow or "")
+	hdrCost.indicator:SetText(state and state.sortKey == "price" and arrow or "")
+end
+
 local function Refresh()
 	if not state then return end
 	Filters.Apply(Scanner.GetRows(), state, filteredOut)
+	if state.sortKey then
+		Filters.SortRows(filteredOut, state.sortKey, state.sortAscending ~= false)
+	end
+	UpdateSortIndicators()
 	UpdateRows()
 end
 Panel.Refresh = Refresh
@@ -592,8 +604,9 @@ local function CreatePanel()
 	demonDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -184)
 	NS.UI.ApplyTheme("ApplyToDropDown", demonDropdown, 130)
 
-	-- Column header strip (sits above the scroll area). Header text positions
-	-- mirror the row column layout so titles line up with their values.
+	-- Column header strip (sits above the scroll area). Headers are clickable
+	-- buttons; click toggles sort. Indicator FontString shows ▲/▼ on the
+	-- active column.
 	headerRow = CreateFrame("Frame", nil, f)
 	headerRow:SetHeight(HEADER_H)
 	headerRow:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -(TOP_RESERVED - HEADER_H))
@@ -605,22 +618,52 @@ local function CreatePanel()
 	hdrDivider:SetPoint("BOTTOMRIGHT", headerRow, "BOTTOMRIGHT", 0, 0)
 	hdrDivider:SetHeight(1)
 
-	hdrName = headerRow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	hdrName:SetPoint("LEFT", headerRow, "LEFT", COL_ICON_W + COL_GAP + 2, 0)
-	hdrName:SetText("Item")
-	hdrName:SetJustifyH("LEFT")
+	local function MakeHeader(text, justify)
+		local b = CreateFrame("Button", nil, headerRow)
+		b:SetHeight(HEADER_H)
+		b.label = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		b.label:SetPoint("LEFT", b, "LEFT", 0, 0)
+		b.label:SetPoint("RIGHT", b, "RIGHT", 0, 0)
+		b.label:SetJustifyH(justify)
+		b.label:SetText(text)
+		b.indicator = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		if justify == "RIGHT" then
+			b.indicator:SetPoint("RIGHT", b.label, "LEFT", -2, 0)
+		else
+			b.indicator:SetPoint("LEFT", b.label, "RIGHT", 4, 0)
+		end
+		b.indicator:SetText("")
+		b:SetScript("OnEnter", function(self) self.label:SetTextColor(1, 1, 0.6) end)
+		b:SetScript("OnLeave", function(self) self.label:SetTextColor(1, 1, 1) end)
+		return b
+	end
 
-	hdrCost = headerRow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	hdrCost:SetPoint("RIGHT", headerRow, "RIGHT", -COL_RIGHT_PAD, 0)
+	hdrCost = MakeHeader("Cost", "RIGHT")
 	hdrCost:SetWidth(COL_COST_W)
-	hdrCost:SetText("Cost")
-	hdrCost:SetJustifyH("RIGHT")
+	hdrCost:SetPoint("RIGHT", headerRow, "RIGHT", -COL_RIGHT_PAD, 0)
 
-	hdrIlvl = headerRow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	hdrIlvl:SetPoint("RIGHT", hdrCost, "LEFT", -COL_GAP, 0)
+	hdrIlvl = MakeHeader("ilvl", "RIGHT")
 	hdrIlvl:SetWidth(COL_ILVL_W)
-	hdrIlvl:SetText("ilvl")
-	hdrIlvl:SetJustifyH("RIGHT")
+	hdrIlvl:SetPoint("RIGHT", hdrCost, "LEFT", -COL_GAP, 0)
+
+	hdrName = MakeHeader("Item", "LEFT")
+	hdrName:SetPoint("LEFT", headerRow, "LEFT", COL_ICON_W + COL_GAP + 2, 0)
+	hdrName:SetPoint("RIGHT", hdrIlvl, "LEFT", -COL_GAP, 0)
+
+	local function OnHeaderClick(key)
+		return function()
+			if state.sortKey == key then
+				state.sortAscending = not (state.sortAscending ~= false)
+			else
+				state.sortKey = key
+				state.sortAscending = true
+			end
+			Refresh()
+		end
+	end
+	hdrName:SetScript("OnClick", OnHeaderClick("name"))
+	hdrIlvl:SetScript("OnClick", OnHeaderClick("itemLevel"))
+	hdrCost:SetScript("OnClick", OnHeaderClick("price"))
 
 	-- Scroll frame + rows
 	scrollFrame = CreateFrame("ScrollFrame", "Coinscry_ScrollFrame", f, "FauxScrollFrameTemplate")
