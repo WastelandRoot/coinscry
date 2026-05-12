@@ -10,9 +10,18 @@ local Scanner = NS.Scanner
 local PANEL_W = 440
 local ROW_H = Theme.rowHeight
 local NUM_VISIBLE_ROWS = 14
-local TOP_RESERVED = 216  -- title + search + 3 dropdown rows + ilvl/reqlvl row + checkbox row + demon row + padding
+local HEADER_H = 18 -- column header strip above the scroll area
+local TOP_RESERVED = 216 + HEADER_H
 local BOT_RESERVED = 30
 local PANEL_H = TOP_RESERVED + NUM_VISIBLE_ROWS * ROW_H + BOT_RESERVED
+
+-- Column geometry. Icon + ilvl + cost are fixed-width and right-aligned;
+-- Name fills the remaining horizontal space.
+local COL_ICON_W = 20
+local COL_ILVL_W = 40
+local COL_COST_W = 100
+local COL_RIGHT_PAD = 4 -- inside-the-row pad on the right
+local COL_GAP = 6       -- gap between columns
 
 local state = nil
 local filteredOut = {}
@@ -21,6 +30,7 @@ local panelFrame
 local searchBox, qualityDropdown, classDropdown, subclassDropdown, groupDropdown, demonDropdown
 local ilvlMinBox, ilvlMaxBox, reqLevelMaxBox
 local affordableCheck, canUseCheck, knownCheck
+local headerRow, hdrName, hdrIlvl, hdrCost
 local scrollFrame
 local rowWidgets = {}
 
@@ -117,20 +127,30 @@ local function CreateRow(parent, i, anchorTo)
 	r.bg:SetAllPoints()
 	r.bg:SetColorTexture(1, 1, 1, 0)
 
+	-- Icon (leftmost column, no header)
 	r.icon = r:CreateTexture(nil, "ARTWORK")
 	r.icon:SetSize(ROW_H - 4, ROW_H - 4)
 	r.icon:SetPoint("LEFT", r, "LEFT", 2, 0)
 
-	r.name = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	r.name:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
-	r.name:SetPoint("RIGHT", r, "RIGHT", -110, 0)
-	r.name:SetJustifyH("LEFT")
-	r.name:SetWordWrap(false)
-
+	-- Cost (rightmost) — anchored to row right with internal padding.
 	r.price = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	r.price:SetPoint("RIGHT", r, "RIGHT", -4, 0)
+	r.price:SetPoint("RIGHT", r, "RIGHT", -COL_RIGHT_PAD, 0)
+	r.price:SetWidth(COL_COST_W)
 	r.price:SetJustifyH("RIGHT")
 	r.price:SetTextColor(1, 0.82, 0)
+
+	-- iLvl (second-from-right) — left of price.
+	r.ilvl = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	r.ilvl:SetPoint("RIGHT", r.price, "LEFT", -COL_GAP, 0)
+	r.ilvl:SetWidth(COL_ILVL_W)
+	r.ilvl:SetJustifyH("RIGHT")
+
+	-- Name fills the rest, between icon and ilvl.
+	r.name = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	r.name:SetPoint("LEFT", r.icon, "RIGHT", COL_GAP, 0)
+	r.name:SetPoint("RIGHT", r.ilvl, "LEFT", -COL_GAP, 0)
+	r.name:SetJustifyH("LEFT")
+	r.name:SetWordWrap(false)
 
 	r:SetScript("OnEnter", function(self)
 		self.bg:SetColorTexture(1, 1, 1, 0.10)
@@ -177,6 +197,12 @@ local function UpdateRows()
 			local cr, cg, cb = Theme.QualityColor(data.quality)
 			w.name:SetTextColor(cr, cg, cb)
 			w.name:SetText(data.name or "...")
+			-- iLvl: blank for items where it isn't meaningful (0 / -1 / nil)
+			if data.itemLevel and data.itemLevel > 0 then
+				w.ilvl:SetText(tostring(data.itemLevel))
+			else
+				w.ilvl:SetText("")
+			end
 			local priceText = FormatPrice(data.price)
 			if data.hasExtendedCost then
 				priceText = (priceText == "" and "+ items" or (priceText .. " + items"))
@@ -565,6 +591,36 @@ local function CreatePanel()
 	demonDropdown = CreateFrame("Frame", "Coinscry_DemonDropdown", f, "UIDropDownMenuTemplate")
 	demonDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -184)
 	NS.UI.ApplyTheme("ApplyToDropDown", demonDropdown, 130)
+
+	-- Column header strip (sits above the scroll area). Header text positions
+	-- mirror the row column layout so titles line up with their values.
+	headerRow = CreateFrame("Frame", nil, f)
+	headerRow:SetHeight(HEADER_H)
+	headerRow:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -(TOP_RESERVED - HEADER_H))
+	headerRow:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -(TOP_RESERVED - HEADER_H))
+
+	local hdrDivider = headerRow:CreateTexture(nil, "ARTWORK")
+	hdrDivider:SetColorTexture(1, 1, 1, 0.10)
+	hdrDivider:SetPoint("BOTTOMLEFT", headerRow, "BOTTOMLEFT", 0, 0)
+	hdrDivider:SetPoint("BOTTOMRIGHT", headerRow, "BOTTOMRIGHT", 0, 0)
+	hdrDivider:SetHeight(1)
+
+	hdrName = headerRow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	hdrName:SetPoint("LEFT", headerRow, "LEFT", COL_ICON_W + COL_GAP + 2, 0)
+	hdrName:SetText("Item")
+	hdrName:SetJustifyH("LEFT")
+
+	hdrCost = headerRow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	hdrCost:SetPoint("RIGHT", headerRow, "RIGHT", -COL_RIGHT_PAD, 0)
+	hdrCost:SetWidth(COL_COST_W)
+	hdrCost:SetText("Cost")
+	hdrCost:SetJustifyH("RIGHT")
+
+	hdrIlvl = headerRow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	hdrIlvl:SetPoint("RIGHT", hdrCost, "LEFT", -COL_GAP, 0)
+	hdrIlvl:SetWidth(COL_ILVL_W)
+	hdrIlvl:SetText("ilvl")
+	hdrIlvl:SetJustifyH("RIGHT")
 
 	-- Scroll frame + rows
 	scrollFrame = CreateFrame("ScrollFrame", "Coinscry_ScrollFrame", f, "FauxScrollFrameTemplate")
