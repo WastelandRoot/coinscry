@@ -509,10 +509,12 @@ local function CreatePanel()
 		Refresh()
 	end)
 
-	-- Row 4: "Only show affordable" + "Hide already known" checkboxes
-	local function MakeFilterCheckbox(text, x, y, getter, setter)
+	-- Row 4: filter checkboxes, chained so labels don't overlap regardless of
+	-- text length. The first one is positioned by absolute (x, y); each
+	-- subsequent one anchors after the previous checkbox's label.
+	local CHAIN_GAP = 14
+	local function MakeFilterCheckbox(text, prevOrX, y, getter, setter)
 		local c = CreateFrame("CheckButton", nil, f, "ChatConfigCheckButtonTemplate")
-		c:SetPoint("TOPLEFT", f, "TOPLEFT", x, y)
 		c:SetSize(20, 20)
 		local label = c.Text or _G[(c:GetName() or "") .. "Text"]
 		if not label then
@@ -520,6 +522,12 @@ local function CreatePanel()
 			label:SetPoint("LEFT", c, "RIGHT", 2, 1)
 		end
 		label:SetText(text)
+		c.label = label
+		if type(prevOrX) == "number" then
+			c:SetPoint("TOPLEFT", f, "TOPLEFT", prevOrX, y)
+		else
+			c:SetPoint("LEFT", prevOrX.label, "RIGHT", CHAIN_GAP, -1)
+		end
 		c:SetChecked(getter() and true or false)
 		c:SetScript("OnClick", function(self)
 			setter(self:GetChecked() and true or nil)
@@ -534,12 +542,12 @@ local function CreatePanel()
 		function(v) state.affordableOnly = v end
 	)
 	canUseCheck = MakeFilterCheckbox(
-		"Can use", 150, -154,
+		"Can use", affordableCheck, nil,
 		function() return state.canUseOnly end,
 		function(v) state.canUseOnly = v end
 	)
 	knownCheck = MakeFilterCheckbox(
-		"Hide known", 270, -154,
+		"Hide known", canUseCheck, nil,
 		function() return state.hideAlreadyKnown end,
 		function(v) state.hideAlreadyKnown = v end
 	)

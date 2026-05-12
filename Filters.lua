@@ -34,16 +34,15 @@ function Filters.NewState()
 	}
 end
 
----Can the player use this item? Backed by Scanner's tooltip scan, which marks
----row.canUse=false if WoW itself rendered any restriction line in red
----(armor/weapon proficiency, class restriction, level requirement, skill
----requirement). This is the same signal WoW uses to color the item red in the
----merchant frame.
----@param row table Scanner row (Scanner.Rescan populates .canUse)
+---Can the player use this item? Uses GetMerchantItemInfo's isUsable return,
+---which is the exact signal WoW uses to red-color items in the merchant frame.
+---Covers class restriction, armor / weapon proficiency, level requirement,
+---skill requirement — anything WoW renders red in the merchant.
+---@param row table Scanner row (Scanner.Rescan populates .isUsable)
 ---@return boolean
 function Filters.IsRowUsable(row)
-	if not row then return false end
-	return row.canUse ~= false -- nil or true both mean usable
+	if not row or not row.isUsable then return false end
+	return true
 end
 
 ---Can the player afford row right now (gold + any extended currency/item cost)?

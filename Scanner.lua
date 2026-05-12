@@ -22,41 +22,27 @@ local scanTip
 ---@param link string item link
 ---@return boolean alreadyKnown
 ---@return string? demonType one of the DEMON_NAMES keys, or nil
----@return boolean canUse true unless the tooltip has any red restriction line
 local function ScanItemDetails(link)
-	if not link then return false, nil, true end
+	if not link then return false, nil end
 	if not scanTip then
 		scanTip = CreateFrame("GameTooltip", "TSMVFP_Scanner", UIParent, "GameTooltipTemplate")
 		scanTip:SetOwner(UIParent, "ANCHOR_NONE")
 	end
 	scanTip:ClearLines()
-	if not pcall(function() scanTip:SetHyperlink(link) end) then return false, nil, true end
+	if not pcall(function() scanTip:SetHyperlink(link) end) then return false, nil end
 	local known = false
 	local demon = nil
-	local canUse = true
 	local target = _G.ITEM_SPELL_KNOWN or "Already known"
 	for i = 1, scanTip:NumLines() do
 		local fs = _G["TSMVFP_ScannerTextLeft" .. i]
 		if fs then
 			local text = fs:GetText() or ""
 			if text == target then known = true end
-			-- Match "Use: Teaches Imp ..." or just "Teaches Imp ..."
 			local captured = text:match("Teaches (%S+)")
 			if captured and DEMON_NAMES[captured] then demon = captured end
-			-- Any line WoW renders in restriction-red (~RGB 1, 0.125, 0.125)
-			-- means the player fails some requirement: wrong class, wrong
-			-- armor / weapon proficiency, level too low, missing skill, etc.
-			-- This is exactly what WoW itself uses to communicate "you can't
-			-- use this," so it's the most accurate "can use" signal possible.
-			if canUse and text ~= "" then
-				local r, g, b = fs:GetTextColor()
-				if r and g and b and r > 0.9 and g < 0.2 and b < 0.2 then
-					canUse = false
-				end
-			end
 		end
 	end
-	return known, demon, canUse
+	return known, demon
 end
 
 local function ResolveRow(row)
@@ -64,7 +50,7 @@ local function ResolveRow(row)
 	local q, ilvl, minLvl, classID, subclassID = ItemCache.Get(row.link)
 	row.quality, row.itemLevel, row.minLevel = q, ilvl, minLvl
 	row.classID, row.subclassID = classID, subclassID
-	row.alreadyKnown, row.demonType, row.canUse = ScanItemDetails(row.link)
+	row.alreadyKnown, row.demonType = ScanItemDetails(row.link)
 	if TSM_API and TSM_API.ToItemString then
 		local ok, itemString = pcall(TSM_API.ToItemString, row.link)
 		if ok and itemString then
