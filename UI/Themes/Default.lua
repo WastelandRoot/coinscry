@@ -39,11 +39,20 @@ function Theme.ApplyToPanel(frame)
 	ApplyBackdrop(frame, BACKDROP_FRAME, Theme.colors.bgPanel, Theme.colors.border)
 end
 
+local BACKDROP_TAB = {
+	bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+	edgeSize = 12,
+	insets   = { left = 3, right = 3, top = 3, bottom = 3 },
+}
+
 function Theme.ApplyToTab(button)
-	button:SetNormalTexture("Interface\\PaperDollInfoFrame\\UI-Character-Tab-Background")
-	button:GetNormalTexture():SetTexCoord(0, 1, 0, 1)
+	-- CreateFrame("Button", ..., "BackdropTemplate") gives us SetBackdrop.
+	button:SetBackdrop(BACKDROP_TAB)
+	button:SetBackdropColor(Theme.colors.bgPanel.r, Theme.colors.bgPanel.g, Theme.colors.bgPanel.b, 1)
+	button:SetBackdropBorderColor(Theme.colors.border.r, Theme.colors.border.g, Theme.colors.border.b, 1)
 	button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-	button:GetHighlightTexture():SetBlendMode("ADD")
+	if button:GetHighlightTexture() then button:GetHighlightTexture():SetBlendMode("ADD") end
 end
 
 function Theme.ApplyToButton(button)

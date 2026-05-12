@@ -12,7 +12,7 @@ local tabButton
 local clickHandler
 
 local function CreateTab()
-	local b = CreateFrame("Button", "TSMVFP_Tab", UIParent)
+	local b = CreateFrame("Button", "TSMVFP_Tab", UIParent, "BackdropTemplate")
 	b:SetSize(TAB_W, TAB_H)
 	b:SetFrameStrata("DIALOG") -- above TSM's vendor frame (HIGH)
 	NS.UI.ApplyTheme("ApplyToTab", b)
