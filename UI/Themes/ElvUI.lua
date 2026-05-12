@@ -52,19 +52,28 @@ end
 function Theme.ApplyToButton(button)      safeCall("HandleButton", button) end
 
 function Theme.ApplyToTab(button)
-	safeCall("HandleButton", button)
-	-- ElvUI's HandleButton uses button:SetTemplate(...) by default, which puts
-	-- the backdrop on the button itself (no button.backdrop child). So we set
-	-- the color directly on the button. Cover the .backdrop case too in case a
-	-- future ElvUI version switches to CreateBackdrop.
+	-- We deliberately DON'T call S:HandleButton here. On this client it
+	-- interacts badly with the BackdropTemplate the tab is created with —
+	-- the result is a visually transparent button regardless of how we set
+	-- the color afterwards. Direct override with an opaque flat backdrop is
+	-- reliable, and using ElvUI's own blankTex / backdropcolor keeps it
+	-- visually consistent with the rest of the skinned UI.
 	local m = GetEMedia()
+	local blankTex = (m and m.blankTex) or "Interface\\Buttons\\WHITE8x8"
 	local c = (m and m.backdropcolor) or { 0.06, 0.06, 0.06 }
-	local r, g, b = c[1] or 0.06, c[2] or 0.06, c[3] or 0.06
-	if button.SetBackdropColor then
-		pcall(button.SetBackdropColor, button, r, g, b, 1)
+	if button.SetBackdrop then
+		pcall(button.SetBackdrop, button, {
+			bgFile   = blankTex,
+			edgeFile = blankTex,
+			edgeSize = 1,
+			insets   = { left = 0, right = 0, top = 0, bottom = 0 },
+		})
 	end
-	if button.backdrop and button.backdrop.SetBackdropColor then
-		pcall(button.backdrop.SetBackdropColor, button.backdrop, r, g, b, 1)
+	if button.SetBackdropColor then
+		pcall(button.SetBackdropColor, button, c[1] or 0.06, c[2] or 0.06, c[3] or 0.06, 1)
+	end
+	if button.SetBackdropBorderColor then
+		pcall(button.SetBackdropBorderColor, button, 0, 0, 0, 1)
 	end
 end
 function Theme.ApplyToCloseButton(button) safeCall("HandleCloseButton", button) end
