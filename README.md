@@ -10,7 +10,7 @@ TSM ships its vendor filter button as a stub (literal `-- TODO` in `Core/UI/Vend
 
 | Embedded inside Blizzard's merchant frame (vanilla mode) | Attached to TSM's vendor frame, filtered to a TSM group |
 |---|---|
-| ![embedded](Media/screenshots/01-embedded.png) | ![tsm-attached](Media/screenshots/02-tsm-attached.png) |
+| ![embedded](Media/screenshots/01-embed-compact.png) | ![tsm-attached](Media/screenshots/02-tsm-attached.png) |
 
 | Quality + weapon-type narrowing (filters section expanded) | Can-use + affordable checkboxes filtering the row set |
 |---|---|

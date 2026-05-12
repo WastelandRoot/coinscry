@@ -11,7 +11,7 @@ TSM ships its vendor filter button as a stub (literal `-- TODO` in `Core/UI/Vend
 - **Embedded mode (no TSM)** — Coinscry replaces Blizzard's merchant grid in-place. The MerchantFrame widens to fit, the vanilla item buttons hide, and the filter panel fills that area. Click the side tab to flip back to the normal merchant view at any time. Blizzard's *Buyback* and *Repair* tabs still work — clicking them yields the embed automatically.
 - **Attached mode (with TSM)** — when TSM's vendoring UI is up, Coinscry floats beside it as a slide-out panel. TSM's own vendor frame is untouched.
 
-![embedded inside the Blizzard merchant frame](https://raw.githubusercontent.com/WastelandRoot/coinscry/main/Media/screenshots/01-embedded.png)
+![embedded inside the Blizzard merchant frame](https://raw.githubusercontent.com/WastelandRoot/coinscry/main/Media/screenshots/01-embed-compact.png)
 
 The panel auto-detects which frame is in front and re-anchors as you open and close them.
 
