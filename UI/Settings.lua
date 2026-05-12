@@ -158,28 +158,22 @@ local function CreateFrame_()
 		function() return GetSetting("resetOnOpen") end,
 		function(v) SetSetting("resetOnOpen", v) end
 	)
-	local resetHint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	resetHint:SetPoint("TOPLEFT", widgets.resetOnOpen, "BOTTOMLEFT", 8, -2)
-	resetHint:SetText("(otherwise filters carry over to the next vendor)")
 
 	widgets.autoOpen = MakeCheckbox(
-		f, "Show Coinscry view on vendor open", 16, -148,
+		f, "Show Coinscry view on vendor open", 16, -136,
 		function() return GetSetting("autoOpen") end,
 		function(v) SetSetting("autoOpen", v) end
 	)
-	local autoOpenHint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	autoOpenHint:SetPoint("TOPLEFT", widgets.autoOpen, "BOTTOMLEFT", 8, -2)
-	autoOpenHint:SetText("(otherwise click the tab; Blizzard / TSM view shows by default)")
 
 	-- Anchor section
 	local anchorHeader = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	anchorHeader:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -200)
+	anchorHeader:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -178)
 	anchorHeader:SetText("Anchor")
 	anchorHeader:SetTextColor(1, 0.82, 0)
 
 	widgets.anchorMode = MakeDropdown(
 		f, "Coinscry_SettingsAnchorMode", "Which vendor frame to attach to:",
-		16, -220, 200, ANCHOR_CHOICES,
+		16, -198, 200, ANCHOR_CHOICES,
 		function()
 			return (NS.UI.Anchor and NS.UI.Anchor.GetOverride and NS.UI.Anchor.GetOverride()) or nil
 		end,
@@ -192,12 +186,12 @@ local function CreateFrame_()
 
 	-- Diagnostics section
 	local diagHeader = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	diagHeader:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -296)
+	diagHeader:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -274)
 	diagHeader:SetText("Diagnostics")
 	diagHeader:SetTextColor(1, 0.82, 0)
 
 	widgets.verbose = MakeCheckbox(
-		f, "Anchor tracing", 16, -316,
+		f, "Anchor tracing", 16, -294,
 		function() return GetSetting("verbose") end,
 		function(v)
 			SetSetting("verbose", v)

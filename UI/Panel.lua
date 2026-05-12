@@ -925,6 +925,16 @@ local function OnMerchantFrameUpdate()
 		if embedToggleOn and panelFrame and not panelFrame:IsShown() then
 			ShowVisible()
 		end
+		-- Re-hide any widgets Blizzard's MerchantFrame_Update may have
+		-- re-shown after we hid them (notably MerchantBuyBackItem, which
+		-- the buyback-slot update unhides each refresh). Cheap idempotent
+		-- loop; only runs while the panel is actually embedded + visible.
+		if panelFrame and panelFrame:IsShown() then
+			for _, name in ipairs(HIDDEN_MERCHANT_WIDGETS) do
+				local f = _G[name]
+				if f and f:IsShown() then f:Hide() end
+			end
+		end
 	else
 		-- Buyback (or future tabs). Hide our panel without clearing
 		-- embedToggleOn so we can restore when they come back.
