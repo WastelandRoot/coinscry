@@ -10,11 +10,13 @@ NS.UI.Themes.ElvUI = Theme
 -- the theme is silently inactive for that session.
 
 local function GetSkins()
-	if not _G.IsAddOnLoaded or not _G.IsAddOnLoaded("ElvUI") then return nil end
+	-- Don't rely on IsAddOnLoaded — it was moved to C_AddOns.IsAddOnLoaded in
+	-- retail-era clients (and TBC Anniversary inherits that). Existence of the
+	-- _G.ElvUI engine table with a Skins member is the only signal we need.
 	local raw = _G.ElvUI
 	if type(raw) ~= "table" then return nil end
 	local E = raw[1]
-	if not E or not E.Skins then return nil end
+	if type(E) ~= "table" then return nil end
 	return E.Skins
 end
 

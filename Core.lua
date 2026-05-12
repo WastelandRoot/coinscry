@@ -167,6 +167,13 @@ SlashCmdList["TSMVFP"] = function(msg)
 			NS.UI.Anchor.SetVerbose(false)
 			Log("anchor tracing OFF")
 		end
+	elseif msg == "theme" then
+		local elvui = NS.UI and NS.UI.Themes and NS.UI.Themes.ElvUI or nil
+		Log("theme — Default always on; ElvUI active=%s", tostring(elvui and elvui.IsActive and elvui.IsActive() or false))
+		Log("  _G.ElvUI type=%s; _G.ElvUI[1] type=%s; _G.ElvUI[1].Skins=%s",
+			type(_G.ElvUI),
+			type(_G.ElvUI) == "table" and type(_G.ElvUI[1]) or "n/a",
+			(type(_G.ElvUI) == "table" and type(_G.ElvUI[1]) == "table") and tostring(_G.ElvUI[1].Skins ~= nil) or "n/a")
 	elseif msg == "reset" then
 		if NS.UI and NS.UI.Panel and NS.UI.Panel.ResetFilters then
 			NS.UI.Panel.ResetFilters()
