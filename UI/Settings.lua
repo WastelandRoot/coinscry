@@ -73,6 +73,16 @@ local function MakeDropdown(parent, name, labelText, x, y, width, choices, gette
 	UIDropDownMenu_SetWidth(d, width or 160)
 	NS.UI.ApplyTheme("ApplyToDropDown", d, width or 160)
 
+	-- UIDropDownMenu's selected-value Text is anchored RIGHT-to-LEFT of the
+	-- arrow button by default, so for wider dropdowns short labels look
+	-- centered/right-shifted. Left-align it just inside the visible backdrop.
+	local txt = _G[d:GetName() .. "Text"]
+	if txt then
+		txt:ClearAllPoints()
+		txt:SetPoint("LEFT", d, "LEFT", 22, 1)
+		txt:SetJustifyH("LEFT")
+	end
+
 	local function LabelFor(v)
 		for _, c in ipairs(choices) do
 			if c.value == v then return c.label end
@@ -183,7 +193,7 @@ local function CreateFrame_()
 	)
 	local verboseHint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	verboseHint:SetPoint("TOPLEFT", widgets.verbose, "BOTTOMLEFT", 8, -2)
-	verboseHint:SetText("(logs to chat when the anchor switches between TSM and Merchant frames)")
+	verboseHint:SetText("(logs anchor changes to chat)")
 
 	local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 16, 12)

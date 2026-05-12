@@ -50,7 +50,18 @@ function Theme.ApplyToPanel(frame)
 	end
 end
 function Theme.ApplyToButton(button)      safeCall("HandleButton", button) end
-function Theme.ApplyToTab(button)         safeCall("HandleButton", button) end
+
+function Theme.ApplyToTab(button)
+	safeCall("HandleButton", button)
+	-- ElvUI's HandleButton can leave the tab essentially invisible (no fill).
+	-- Force the same opaque backdrop we use on panels so the tab is always
+	-- visible against any background.
+	if button.backdrop and button.backdrop.SetBackdropColor then
+		local m = GetEMedia()
+		local c = (m and m.backdropcolor) or { 0.06, 0.06, 0.06 }
+		pcall(button.backdrop.SetBackdropColor, button.backdrop, c[1] or 0.06, c[2] or 0.06, c[3] or 0.06, 1)
+	end
+end
 function Theme.ApplyToCloseButton(button) safeCall("HandleCloseButton", button) end
 function Theme.ApplyToEditBox(editBox)    safeCall("HandleEditBox", editBox) end
 function Theme.ApplyToScrollBar(scroll)   safeCall("HandleScrollBar", scroll) end
