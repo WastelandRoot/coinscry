@@ -31,7 +31,11 @@ local function ApplyAnchor(anchor)
 		return
 	end
 	if Tab then Tab.AttachTo(anchor) end
-	if Panel then Panel.AttachTo(anchor) end
+	-- When the chosen anchor is Blizzard's MerchantFrame, embed our panel
+	-- inside it (clicking the tab toggles between Coinscry view and Blizzard's
+	-- native item grid). When it's TSM's vendor frame, float beside it.
+	local mode = (anchor == _G.MerchantFrame) and "embedded" or "attached"
+	if Panel then Panel.AttachTo(anchor, mode) end
 end
 
 local function OnMerchantShow()
