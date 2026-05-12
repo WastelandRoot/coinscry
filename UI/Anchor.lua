@@ -75,7 +75,7 @@ local function FindTSMVendoringFrame()
 	-- If other TSM application UIs are also visible (Crafting, Mailing, Auction),
 	-- their frames share the same name pattern. We can't disambiguate from the
 	-- outside, but the user almost never has those open at a vendor, so the
-	-- first match wins. If this becomes a real problem, a /tvfp anchor cycle
+	-- first match wins. If this becomes a real problem, a /coinscry anchor cycle
 	-- command can let the user pick.
 	for child in IterateTSMFrames() do
 		return child
@@ -91,7 +91,7 @@ local function PickAnchor()
 	return FindTSMVendoringFrame() or MerchantFrame
 end
 
----@return string detailed snapshot of detection at this moment (for /tvfp poll)
+---@return string detailed snapshot of detection at this moment (for /coinscry poll)
 function Anchor.Probe()
 	local lines = { "anchor probe:" }
 	local tsmOk = NS.HasTSM and NS.HasTSM()
@@ -110,7 +110,7 @@ function Anchor.Probe()
 	return table.concat(lines, "\n")
 end
 
----@return string a multi-line dump of TSM application frames (for /tvfp dump)
+---@return string a multi-line dump of TSM application frames (for /coinscry dump)
 function Anchor.DumpFrames()
 	local ok, result = pcall(function()
 		local lines = { "TSM application frames (visible, name matches TSM_FRAME:LargeApplicationFrame:):" }
@@ -157,7 +157,7 @@ local function Reattach()
 	local desired = PickAnchor()
 	if desired == currentAnchor then return end
 	if verbose then
-		print(("|cff66ccffTSM-VFP|r anchor: %s -> %s"):format(DescribeFrame(currentAnchor), DescribeFrame(desired)))
+		print(("|cff66ccffCoinscry|r anchor: %s -> %s"):format(DescribeFrame(currentAnchor), DescribeFrame(desired)))
 	end
 	currentAnchor = desired
 	NotifyChanged()
@@ -192,7 +192,7 @@ end
 ---@param o "merchant"|"tsm"|nil
 function Anchor.SetOverride(o)
 	override = (o == "merchant" or o == "tsm") and o or nil
-	if TSMVFPCharDB then TSMVFPCharDB.anchorOverride = override end
+	if CoinscryCharDB then CoinscryCharDB.anchorOverride = override end
 	Reattach() -- apply immediately
 end
 
@@ -201,12 +201,12 @@ function Anchor.GetOverride() return override end
 
 ---Load persisted override from SavedVariables. Call once after VARIABLES_LOADED.
 function Anchor.LoadOverride()
-	if TSMVFPCharDB and TSMVFPCharDB.anchorOverride then
-		override = TSMVFPCharDB.anchorOverride
+	if CoinscryCharDB and CoinscryCharDB.anchorOverride then
+		override = CoinscryCharDB.anchorOverride
 	end
 end
 
----@return string a one-line summary for /tvfp status / debug
+---@return string a one-line summary for /coinscry status / debug
 function Anchor.GetSummary()
 	if not currentAnchor then return "no anchor" end
 	local name = SafeGetName(currentAnchor) or "<unnamed>"

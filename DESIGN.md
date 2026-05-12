@@ -1,8 +1,8 @@
-# tsm-vendor-filter-plus — Design
+# coinscry — Design
 
 Status: **draft, pre-implementation** (2026-05-11)
 Target client: WoW TBC Anniversary, Interface `20505`
-Repo: `git.kal.run/kaltec/tsm-vendor-filter-plus`
+Repo: `git.kal.run/kaltec/coinscry`
 
 ---
 
@@ -97,7 +97,7 @@ Data comes from WoW's native merchant API (`GetMerchantNumItems`, `GetMerchantIt
 │  └────────────────┬────────────────────────────────────────┘ │
 │                   │                                          │
 │  ┌────────────────▼────────────────────────────────────────┐ │
-│  │  tsm-vendor-filter-plus                                 │ │
+│  │  coinscry                                 │ │
 │  │  ┌──────────┐  ┌────────────┐  ┌──────────────────┐    │ │
 │  │  │ Scanner  │→ │  Filters   │→ │ Floating panel   │    │ │
 │  │  │ (Wow API)│  │  (Lua)     │  │ (custom frame)   │    │ │
@@ -116,7 +116,7 @@ Data comes from WoW's native merchant API (`GetMerchantNumItems`, `GetMerchantIt
 ### Module breakdown (Lua files)
 
 ```
-tsm-vendor-filter-plus.toc           -- single-flavor, Interface 20505
+coinscry.toc           -- single-flavor, Interface 20505
 Core.lua                              -- addon entry, event dispatch, slash commands
 Scanner.lua                           -- reads merchant items via WoW API, caches per session
 Filters.lua                           -- pure filter predicates (quality, ilvl, class, group, …)
@@ -194,7 +194,7 @@ WhatsTraining and Clique both add a left-side tab to an existing Blizzard frame.
 - A `Button` frame parented to the active vendor frame (the *anchor*; see §4).
 - Anchored `TOPRIGHT` to the anchor's `TOPLEFT`, with a small Y-offset (~-32px below the title bar).
 - Texture: a vertical "tab" graphic — 32x64ish — with our addon icon centered, rotated for the orientation. We ship our own texture in `Media/`.
-- States: normal / highlighted (on mouseover) / pushed (panel open). Tooltip on hover: "TSM-VFP — vendor filters".
+- States: normal / highlighted (on mouseover) / pushed (panel open). Tooltip on hover: "Coinscry — vendor filters".
 - Click → `Panel:Toggle()`.
 
 ### Panel
@@ -205,7 +205,7 @@ WhatsTraining and Clique both add a left-side tab to an existing Blizzard frame.
 
 ```
 ┌──────────────────────────────┐                   ┌──┐
-│  TSM-VFP                  [×]│                   │  │
+│  Coinscry                  [×]│                   │  │
 │  Search: [_______________]   │                   │  │
 │  Quality:  [Rare+        ▾]  │                   │T │ <— tab on the right edge
 │  Class:    [Armor        ▾]  │                   │S │     (panel sits to its left;
@@ -284,7 +284,7 @@ P0 ships in v0.1 vertical slice. P1 in v0.2. P2+ in v0.3+.
 
 ### M0 — Skeleton (0.5 day)
 - TOC, `Core.lua` entry, `MERCHANT_SHOW/HIDE/UPDATE` handlers.
-- Slash command `/tvfp` opens/closes panel (visible-only stub).
+- Slash command `/coinscry` opens/closes panel (visible-only stub).
 - Print debug: count of merchant items + TSM vendor visibility.
 - **Verifies:** addon loads on TBC Anniversary, events fire, `TSM_API` is reachable.
 
@@ -309,7 +309,7 @@ P0 ships in v0.1 vertical slice. P1 in v0.2. P2+ in v0.3+.
 - F8 "can afford only" with extended-cost handling.
 - Right-click → quantity dialog. Shift-click → buy stack (when affordable).
 - Tooltips on item rows.
-- Slash command surface: `/tvfp reset`, `/tvfp show/hide`, `/tvfp anchor [tsm|merchant|auto]`.
+- Slash command surface: `/coinscry reset`, `/coinscry show/hide`, `/coinscry anchor [tsm|merchant|auto]`.
 
 ### M4 — Optional stretch
 - F9 "not in bags."

@@ -3,7 +3,7 @@ NS.UI = NS.UI or {}
 local Settings = {}
 NS.UI.Settings = Settings
 
--- Global settings (TSMVFPDB) with defaults applied on first read.
+-- Global settings (CoinscryDB) with defaults applied on first read.
 local DEFAULTS = {
 	resetOnOpen = true,
 	verbose     = false,
@@ -11,14 +11,14 @@ local DEFAULTS = {
 }
 
 local function GetSetting(key)
-	TSMVFPDB = TSMVFPDB or {}
-	if TSMVFPDB[key] == nil then TSMVFPDB[key] = DEFAULTS[key] end
-	return TSMVFPDB[key]
+	CoinscryDB = CoinscryDB or {}
+	if CoinscryDB[key] == nil then CoinscryDB[key] = DEFAULTS[key] end
+	return CoinscryDB[key]
 end
 
 local function SetSetting(key, value)
-	TSMVFPDB = TSMVFPDB or {}
-	TSMVFPDB[key] = value
+	CoinscryDB = CoinscryDB or {}
+	CoinscryDB[key] = value
 end
 
 Settings.Get = GetSetting
@@ -109,7 +109,7 @@ local function MakeDropdown(parent, name, labelText, x, y, width, choices, gette
 end
 
 local function CreateFrame_()
-	local f = CreateFrame("Frame", "TSMVFP_SettingsFrame", UIParent, "BackdropTemplate")
+	local f = CreateFrame("Frame", "Coinscry_SettingsFrame", UIParent, "BackdropTemplate")
 	f:SetSize(420, 388)
 	f:SetFrameStrata("DIALOG")
 	f:SetPoint("CENTER")
@@ -123,7 +123,7 @@ local function CreateFrame_()
 	-- Title
 	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	title:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -12)
-	title:SetText("TSM-VFP — Settings")
+	title:SetText("Coinscry — Settings")
 	title:SetTextColor(1, 0.82, 0)
 
 	local closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
@@ -172,7 +172,7 @@ local function CreateFrame_()
 	anchorHeader:SetTextColor(1, 0.82, 0)
 
 	widgets.anchorMode = MakeDropdown(
-		f, "TSMVFP_SettingsAnchorMode", "Which vendor frame to attach to:",
+		f, "Coinscry_SettingsAnchorMode", "Which vendor frame to attach to:",
 		16, -198, 200, ANCHOR_CHOICES,
 		function()
 			return (NS.UI.Anchor and NS.UI.Anchor.GetOverride and NS.UI.Anchor.GetOverride()) or nil
@@ -206,7 +206,7 @@ local function CreateFrame_()
 	hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 16, 12)
 	hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -16, 12)
 	hint:SetJustifyH("LEFT")
-	hint:SetText("Settings apply immediately. /tvfp config to reopen.")
+	hint:SetText("Settings apply immediately. /coinscry config to reopen.")
 
 	f:Hide()
 	return f
@@ -258,12 +258,12 @@ end
 ---the canvas (it's already a polished movable window); instead we just
 ---provide a launcher button.
 function Settings.RegisterInterfaceOptions()
-	local panel = CreateFrame("Frame", "TSMVFP_InterfaceOptionsPanel")
-	panel.name = "TSM-VFP"
+	local panel = CreateFrame("Frame", "Coinscry_InterfaceOptionsPanel")
+	panel.name = "Coinscry"
 
 	local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
 	title:SetPoint("TOPLEFT", 16, -16)
-	title:SetText("TSM-VFP — Vendor Filter Plus")
+	title:SetText("Coinscry — Vendor Filter Plus")
 
 	local sub = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
 	sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
@@ -273,12 +273,12 @@ function Settings.RegisterInterfaceOptions()
 	local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
 	btn:SetSize(200, 28)
 	btn:SetPoint("TOPLEFT", sub, "BOTTOMLEFT", 0, -24)
-	btn:SetText("Open TSM-VFP Settings")
+	btn:SetText("Open Coinscry Settings")
 	btn:SetScript("OnClick", function() Settings.Show() end)
 
 	-- Retail Settings API (available on Anniversary).
 	if _G.Settings and _G.Settings.RegisterCanvasLayoutCategory and _G.Settings.RegisterAddOnCategory then
-		local category = _G.Settings.RegisterCanvasLayoutCategory(panel, "TSM-VFP")
+		local category = _G.Settings.RegisterCanvasLayoutCategory(panel, "Coinscry")
 		_G.Settings.RegisterAddOnCategory(category)
 		return
 	end

@@ -25,7 +25,7 @@ local scanTip
 local function ScanItemDetails(link)
 	if not link then return false, nil end
 	if not scanTip then
-		scanTip = CreateFrame("GameTooltip", "TSMVFP_Scanner", UIParent, "GameTooltipTemplate")
+		scanTip = CreateFrame("GameTooltip", "Coinscry_Scanner", UIParent, "GameTooltipTemplate")
 		scanTip:SetOwner(UIParent, "ANCHOR_NONE")
 	end
 	scanTip:ClearLines()
@@ -34,7 +34,7 @@ local function ScanItemDetails(link)
 	local demon = nil
 	local target = _G.ITEM_SPELL_KNOWN or "Already known"
 	for i = 1, scanTip:NumLines() do
-		local fs = _G["TSMVFP_ScannerTextLeft" .. i]
+		local fs = _G["Coinscry_ScannerTextLeft" .. i]
 		if fs then
 			local text = fs:GetText() or ""
 			if text == target then known = true end

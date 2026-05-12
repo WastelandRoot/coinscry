@@ -55,7 +55,7 @@ local function BuyRow(row, qty)
 	qty = qty or 1
 	BuyMerchantItem(row.index, qty)
 	local label = (row.link or row.name or "?")
-	print(("|cff66ccffTSM-VFP|r: bought %dx %s"):format(qty, label))
+	print(("|cff66ccffCoinscry|r: bought %dx %s"):format(qty, label))
 end
 
 -- Static popup for right-click quantity-buy. Defined once at module load;
@@ -67,7 +67,7 @@ local function PopupEditBox(self)
 	return self.EditBox or self.editBox
 end
 
-StaticPopupDialogs["TSMVFP_BUY_QTY"] = {
+StaticPopupDialogs["Coinscry_BUY_QTY"] = {
 	text = "Buy how many?\n%s",
 	button1 = ACCEPT,
 	button2 = CANCEL,
@@ -149,7 +149,7 @@ local function CreateRow(parent, i, anchorTo)
 		if not self.dataRow then return end
 		if btn == "RightButton" then
 			local label = (self.dataRow.link or self.dataRow.name or "?")
-			local dialog = StaticPopup_Show("TSMVFP_BUY_QTY", label)
+			local dialog = StaticPopup_Show("Coinscry_BUY_QTY", label)
 			if dialog then dialog.data = self.dataRow end
 			return
 		end
@@ -419,7 +419,7 @@ end
 local function CreatePanel()
 	state = state or Filters.NewState() -- always start fresh; filters reset per vendor visit
 
-	local f = CreateFrame("Frame", "TSMVFP_Panel", UIParent, "BackdropTemplate")
+	local f = CreateFrame("Frame", "Coinscry_Panel", UIParent, "BackdropTemplate")
 	f:SetSize(PANEL_W, PANEL_H)
 	f:SetFrameStrata("DIALOG") -- above TSM's vendor frame (HIGH)
 	NS.UI.ApplyTheme("ApplyToPanel", f)
@@ -428,7 +428,7 @@ local function CreatePanel()
 	-- Title + close button
 	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	title:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -10)
-	title:SetText("TSM-VFP")
+	title:SetText("Coinscry")
 	title:SetTextColor(1, 0.82, 0)
 
 	local closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
@@ -437,7 +437,7 @@ local function CreatePanel()
 	NS.UI.ApplyTheme("ApplyToCloseButton", closeBtn)
 
 	-- Search box (SearchBoxTemplate provides magnifier icon, "Search" placeholder, and clear button)
-	searchBox = CreateFrame("EditBox", "TSMVFP_SearchBox", f, "SearchBoxTemplate")
+	searchBox = CreateFrame("EditBox", "Coinscry_SearchBox", f, "SearchBoxTemplate")
 	searchBox:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -32)
 	searchBox:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -32)
 	searchBox:SetHeight(20)
@@ -456,17 +456,17 @@ local function CreatePanel()
 	NS.UI.ApplyTheme("ApplyToEditBox", searchBox)
 
 	-- Row 1: Quality + Group dropdowns. Align left edge with search box (x=16).
-	qualityDropdown = CreateFrame("Frame", "TSMVFP_QualityDropdown", f, "UIDropDownMenuTemplate")
+	qualityDropdown = CreateFrame("Frame", "Coinscry_QualityDropdown", f, "UIDropDownMenuTemplate")
 	qualityDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -56)
-	groupDropdown = CreateFrame("Frame", "TSMVFP_GroupDropdown", f, "UIDropDownMenuTemplate")
+	groupDropdown = CreateFrame("Frame", "Coinscry_GroupDropdown", f, "UIDropDownMenuTemplate")
 	groupDropdown:SetPoint("TOPLEFT", qualityDropdown, "TOPRIGHT", 12, 0)
 	NS.UI.ApplyTheme("ApplyToDropDown", qualityDropdown, 100)
 	NS.UI.ApplyTheme("ApplyToDropDown", groupDropdown, 130)
 
 	-- Row 2: Type + Subtype dropdowns
-	classDropdown = CreateFrame("Frame", "TSMVFP_ClassDropdown", f, "UIDropDownMenuTemplate")
+	classDropdown = CreateFrame("Frame", "Coinscry_ClassDropdown", f, "UIDropDownMenuTemplate")
 	classDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -86)
-	subclassDropdown = CreateFrame("Frame", "TSMVFP_SubclassDropdown", f, "UIDropDownMenuTemplate")
+	subclassDropdown = CreateFrame("Frame", "Coinscry_SubclassDropdown", f, "UIDropDownMenuTemplate")
 	subclassDropdown:SetPoint("TOPLEFT", classDropdown, "TOPRIGHT", 12, 0)
 	NS.UI.ApplyTheme("ApplyToDropDown", classDropdown, 110)
 	NS.UI.ApplyTheme("ApplyToDropDown", subclassDropdown, 130)
@@ -562,12 +562,12 @@ local function CreatePanel()
 	)
 
 	-- Row 5: demon-type dropdown (contextual — hidden when vendor has no tomes)
-	demonDropdown = CreateFrame("Frame", "TSMVFP_DemonDropdown", f, "UIDropDownMenuTemplate")
+	demonDropdown = CreateFrame("Frame", "Coinscry_DemonDropdown", f, "UIDropDownMenuTemplate")
 	demonDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -184)
 	NS.UI.ApplyTheme("ApplyToDropDown", demonDropdown, 130)
 
 	-- Scroll frame + rows
-	scrollFrame = CreateFrame("ScrollFrame", "TSMVFP_ScrollFrame", f, "FauxScrollFrameTemplate")
+	scrollFrame = CreateFrame("ScrollFrame", "Coinscry_ScrollFrame", f, "FauxScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -TOP_RESERVED)
 	scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, BOT_RESERVED - 6)
 	scrollFrame:SetScript("OnVerticalScroll", function(self, offset)

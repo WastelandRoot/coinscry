@@ -1,0 +1,22 @@
+## Interface: 20505
+## Title: Coinscry
+## Notes: Vendor browsing filters — quality, class, item-level, can-use, and (with TSM) group. Best paired with TradeSkillMaster.
+## Author: wastelandroot
+## Version: 0.2.0
+## IconTexture: Interface\AddOns\coinscry\Media\Logo64
+## X-Category: Auctions
+## X-License: MIT
+## OptionalDeps: TradeSkillMaster, ElvUI
+## SavedVariables: CoinscryDB
+## SavedVariablesPerCharacter: CoinscryCharDB
+
+Util\ItemCache.lua
+Scanner.lua
+Filters.lua
+UI\Themes\Default.lua
+UI\Themes\ElvUI.lua
+UI\Tab.lua
+UI\Panel.lua
+UI\Anchor.lua
+UI\Settings.lua
+Core.lua

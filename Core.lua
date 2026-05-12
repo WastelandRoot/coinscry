@@ -1,13 +1,13 @@
 local ADDON_NAME, NS = ...
 
-local TSMVFP = CreateFrame("Frame", ADDON_NAME .. "_Frame")
-_G.TSMVFP = TSMVFP
-NS.Addon = TSMVFP
+local Coinscry = CreateFrame("Frame", ADDON_NAME .. "_Frame")
+_G.Coinscry = Coinscry
+NS.Addon = Coinscry
 
-TSMVFPDB = TSMVFPDB or {}
-TSMVFPCharDB = TSMVFPCharDB or {}
+CoinscryDB = CoinscryDB or {}
+CoinscryCharDB = CoinscryCharDB or {}
 
-local PREFIX = "|cff66ccffTSM-VFP|r: "
+local PREFIX = "|cff66ccffCoinscry|r: "
 local function Log(fmt, ...)
 	print(PREFIX .. fmt:format(...))
 end
@@ -19,7 +19,7 @@ local function CheckTSM()
 	if type(TSM_API.GetGroupPathByItem) ~= "function" then return false, "TSM_API.GetGroupPathByItem missing" end
 	return true
 end
-TSMVFP.HasTSM = CheckTSM
+Coinscry.HasTSM = CheckTSM
 NS.HasTSM = CheckTSM
 
 local Scanner, Tab, Panel, Anchor
@@ -96,10 +96,10 @@ local function OnPlayerLogin()
 	end
 end
 
-TSMVFP:RegisterEvent("PLAYER_LOGIN")
-TSMVFP:RegisterEvent("MERCHANT_SHOW")
-TSMVFP:RegisterEvent("MERCHANT_UPDATE")
-TSMVFP:RegisterEvent("MERCHANT_CLOSED")
+Coinscry:RegisterEvent("PLAYER_LOGIN")
+Coinscry:RegisterEvent("MERCHANT_SHOW")
+Coinscry:RegisterEvent("MERCHANT_UPDATE")
+Coinscry:RegisterEvent("MERCHANT_CLOSED")
 -- These don't affect what's *for sale*, but they change whether each row is
 -- affordable / already known. We don't register them globally — only while
 -- the merchant is open — to avoid burning event traffic when irrelevant.
@@ -107,13 +107,13 @@ TSMVFP:RegisterEvent("MERCHANT_CLOSED")
 local LIVE_REFRESH_EVENTS = { "PLAYER_MONEY", "BAG_UPDATE_DELAYED", "CURRENCY_DISPLAY_UPDATE", "SPELLS_CHANGED" }
 
 local function RegisterLiveRefresh()
-	for _, ev in ipairs(LIVE_REFRESH_EVENTS) do TSMVFP:RegisterEvent(ev) end
+	for _, ev in ipairs(LIVE_REFRESH_EVENTS) do Coinscry:RegisterEvent(ev) end
 end
 local function UnregisterLiveRefresh()
-	for _, ev in ipairs(LIVE_REFRESH_EVENTS) do TSMVFP:UnregisterEvent(ev) end
+	for _, ev in ipairs(LIVE_REFRESH_EVENTS) do Coinscry:UnregisterEvent(ev) end
 end
 
-TSMVFP:SetScript("OnEvent", function(_, event)
+Coinscry:SetScript("OnEvent", function(_, event)
 	if event == "PLAYER_LOGIN" then OnPlayerLogin()
 	elseif event == "MERCHANT_SHOW" then
 		OnMerchantShow()
@@ -132,8 +132,8 @@ TSMVFP:SetScript("OnEvent", function(_, event)
 	end
 end)
 
-SLASH_TSMVFP1 = "/tvfp"
-SlashCmdList["TSMVFP"] = function(msg)
+SLASH_COINSCRY1 = "/coinscry"
+SlashCmdList["COINSCRY"] = function(msg)
 	msg = (msg or ""):lower():match("^%s*(.-)%s*$")
 	if msg == "" or msg == "toggle" then
 		if NS.UI and NS.UI.Panel then NS.UI.Panel.Toggle() end
@@ -230,7 +230,7 @@ SlashCmdList["TSMVFP"] = function(msg)
 		if sub == "merchant" or sub == "tsm" then
 			if NS.UI and NS.UI.Anchor then
 				NS.UI.Anchor.SetOverride(sub)
-				Log("anchor pinned to %s (persists across reloads; /tvfp anchor auto to clear)", sub)
+				Log("anchor pinned to %s (persists across reloads; /coinscry anchor auto to clear)", sub)
 			end
 		elseif sub == "auto" then
 			if NS.UI and NS.UI.Anchor then
@@ -238,7 +238,7 @@ SlashCmdList["TSMVFP"] = function(msg)
 				Log("anchor auto-detect re-enabled")
 			end
 		else
-			Log("usage: /tvfp anchor [merchant|tsm|auto]")
+			Log("usage: /coinscry anchor [merchant|tsm|auto]")
 		end
 	elseif msg == "scan" then
 		if not (MerchantFrame and MerchantFrame:IsShown()) then
@@ -267,6 +267,6 @@ SlashCmdList["TSMVFP"] = function(msg)
 			end
 		end
 	else
-		Log("usage: /tvfp [toggle|config|status|reset|anchor <merchant|tsm|auto>|trace [on|off]|groups|scan|dump|poll|debug|theme]")
+		Log("usage: /coinscry [toggle|config|status|reset|anchor <merchant|tsm|auto>|trace [on|off]|groups|scan|dump|poll|debug|theme]")
 	end
 end

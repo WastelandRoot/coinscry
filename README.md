@@ -1,4 +1,4 @@
-# tsm-vendor-filter-plus
+# coinscry
 
 Vendor-browsing filters for World of Warcraft TBC Anniversary. Built primarily as a companion for [TradeSkillMaster](https://www.tradeskillmaster.com/), but works standalone too.
 
@@ -30,12 +30,12 @@ TSM ships its vendor filter button as a stub (`-- TODO`), so vendor browsing on 
 
 ## Slash commands
 
-- `/tvfp` (or `/tvfp toggle`) — toggle the filter panel at a vendor
-- `/tvfp config` — open the settings window (also reachable from *Game Menu → Options → AddOns → TSM-VFP*)
-- `/tvfp reset` — clear all active filters
-- `/tvfp anchor [merchant|tsm|auto]` — manually pin the anchor or return to auto-detect
-- `/tvfp trace [on|off]` — log anchor switches to chat (diagnostic)
-- `/tvfp status` / `/tvfp poll` / `/tvfp dump` / `/tvfp groups` / `/tvfp scan` — diagnostics
+- `/coinscry` (or `/coinscry toggle`) — toggle the filter panel at a vendor
+- `/coinscry config` — open the settings window (also reachable from *Game Menu → Options → AddOns → Coinscry*)
+- `/coinscry reset` — clear all active filters
+- `/coinscry anchor [merchant|tsm|auto]` — manually pin the anchor or return to auto-detect
+- `/coinscry trace [on|off]` — log anchor switches to chat (diagnostic)
+- `/coinscry status` / `/coinscry poll` / `/coinscry dump` / `/coinscry groups` / `/coinscry scan` — diagnostics
 
 ## Known limitations
 
@@ -56,7 +56,7 @@ Standard workflow: summon the relevant demon before visiting that demon's traine
 
 ### TSM vendor frame disambiguation
 
-When you have multiple TSM application UIs open at once (Vendoring + Crafting, etc.), the anchor logic picks the first matching `TSM_FRAME:LargeApplicationFrame:*` it finds — there's no clean way to distinguish them from outside TSM. In practice this is rare; if you hit it, pin manually with `/tvfp anchor merchant` or `/tvfp anchor tsm`.
+When you have multiple TSM application UIs open at once (Vendoring + Crafting, etc.), the anchor logic picks the first matching `TSM_FRAME:LargeApplicationFrame:*` it finds — there's no clean way to distinguish them from outside TSM. In practice this is rare; if you hit it, pin manually with `/coinscry anchor merchant` or `/coinscry anchor tsm`.
 
 ## License
 

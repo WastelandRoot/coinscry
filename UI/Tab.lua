@@ -5,13 +5,13 @@ NS.UI.Tab = Tab
 
 local TAB_SIZE = 40
 local Y_OFFSET = -34
-local LOGO_PATH = "Interface\\AddOns\\tsm-vendor-filter-plus\\Media\\Logo64"
+local LOGO_PATH = "Interface\\AddOns\\coinscry\\Media\\Logo64"
 
 local tabButton
 local clickHandler
 
 local function CreateTab()
-	local b = CreateFrame("Button", "TSMVFP_Tab", UIParent, "BackdropTemplate")
+	local b = CreateFrame("Button", "Coinscry_Tab", UIParent, "BackdropTemplate")
 	b:SetSize(TAB_SIZE, TAB_SIZE)
 	b:SetFrameStrata("DIALOG") -- above TSM's vendor frame (HIGH)
 	NS.UI.ApplyTheme("ApplyToTab", b)
@@ -26,7 +26,7 @@ local function CreateTab()
 	b:SetScript("OnClick", function() if clickHandler then clickHandler() end end)
 	b:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		GameTooltip:SetText("TSM-VFP — vendor filters")
+		GameTooltip:SetText("Coinscry — vendor filters")
 		GameTooltip:AddLine("Click to toggle filter panel", 1, 1, 1)
 		GameTooltip:Show()
 	end)
