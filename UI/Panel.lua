@@ -564,7 +564,7 @@ local function CreatePanel()
 	hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 8)
 	hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 8)
 	hint:SetJustifyH("LEFT")
-	hint:SetText("click: buy 1 — shift-click: buy stack — right-click: enter quantity")
+	hint:SetText("clk: buy 1x -- shift-clk: buy stack -- rt-clk: enter qty")
 
 	InitQualityDropdown()
 	InitGroupDropdown()
