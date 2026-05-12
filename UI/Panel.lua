@@ -20,7 +20,7 @@ local filteredOut = {}
 local panelFrame
 local searchBox, qualityDropdown, classDropdown, subclassDropdown, groupDropdown, demonDropdown
 local ilvlMinBox, ilvlMaxBox, reqLevelMaxBox
-local affordableCheck, knownCheck
+local affordableCheck, canUseCheck, knownCheck
 local scrollFrame
 local rowWidgets = {}
 
@@ -529,12 +529,17 @@ local function CreatePanel()
 	end
 
 	affordableCheck = MakeFilterCheckbox(
-		"Affordable only", 16, -154,
+		"Affordable", 16, -154,
 		function() return state.affordableOnly end,
 		function(v) state.affordableOnly = v end
 	)
+	canUseCheck = MakeFilterCheckbox(
+		"Can use", 150, -154,
+		function() return state.canUseOnly end,
+		function(v) state.canUseOnly = v end
+	)
 	knownCheck = MakeFilterCheckbox(
-		"Hide already known", 200, -154,
+		"Hide known", 270, -154,
 		function() return state.hideAlreadyKnown end,
 		function(v) state.hideAlreadyKnown = v end
 	)
@@ -631,6 +636,7 @@ function Panel.ResetFilters()
 	if ilvlMaxBox then ilvlMaxBox:SetText("") end
 	if reqLevelMaxBox then reqLevelMaxBox:SetText("") end
 	if affordableCheck then affordableCheck:SetChecked(false) end
+	if canUseCheck then canUseCheck:SetChecked(false) end
 	if knownCheck then knownCheck:SetChecked(false) end
 	if demonDropdown then UIDropDownMenu_SetText(demonDropdown, "Any demon") end
 

@@ -17,8 +17,9 @@ TSM ships its vendor filter button as a stub (`-- TODO`), so vendor browsing on 
 - **Item level** — min / max range
 - **Required level** — max
 - **TSM group** — exact match against a TSM group path (requires TSM)
-- **Affordable only** — checks both gold and any extended-cost items/currencies
-- **Hide already known** — covers profession recipes (player spellbook) and warlock demon tomes (currently-summoned pet's spellbook)
+- **Affordable** — checks both gold and any extended-cost items/currencies
+- **Can use** — hides items the player doesn't meet level / class / weapon-skill requirements for (uses WoW's `IsUsableItem` plus a level check)
+- **Hide known** — covers profession recipes (player spellbook) and warlock demon tomes (currently-summoned pet's spellbook)
 - **Demon type** — Imp / Voidwalker / Succubus / Felhunter / Felguard. Contextual: only appears at vendors selling warlock demon tomes.
 
 ## Buying from the filtered list

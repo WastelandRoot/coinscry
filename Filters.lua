@@ -12,6 +12,7 @@ NS.Filters = Filters
 ---@field ilvlMax? number row.itemLevel must be <= this
 ---@field reqLevelMax? number row.minLevel must be <= this
 ---@field affordableOnly? boolean only show items the player can afford right now
+---@field canUseOnly? boolean only show items the player meets level + class/proficiency requirements for
 ---@field hideAlreadyKnown? boolean hide spell-teaching items the player or current pet already knows
 ---@field demonType? string only show warlock-tome rows whose Teaches line names this demon (Imp/Voidwalker/Felhunter/Succubus/Felguard)
 
@@ -27,9 +28,31 @@ function Filters.NewState()
 		ilvlMax          = nil,
 		reqLevelMax      = nil,
 		affordableOnly   = nil,
+		canUseOnly       = nil,
 		hideAlreadyKnown = nil,
 		demonType        = nil,
 	}
+end
+
+---Can the player use this item right now? Combines:
+---  - row.minLevel <= player level
+---  - WoW's own IsUsableItem (covers armor class proficiency, weapon skill,
+---    faction/race restrictions, etc.)
+---If IsUsableItem returns nil (item info not yet cached), we don't filter — we
+---prefer false positives over spurious hides while data resolves.
+---@param row table Scanner row
+---@return boolean
+function Filters.IsRowUsable(row)
+	if not row then return false end
+	if row.minLevel and row.minLevel > 0 then
+		local lvl = (UnitLevel and UnitLevel("player")) or 1
+		if lvl < row.minLevel then return false end
+	end
+	if row.link and IsUsableItem then
+		local usable = IsUsableItem(row.link)
+		if usable == false then return false end -- explicit false only; nil = unknown
+	end
+	return true
 end
 
 ---Can the player afford row right now (gold + any extended currency/item cost)?
@@ -102,6 +125,9 @@ local function MatchOne(row, state)
 	end
 	if state.affordableOnly then
 		if not Filters.IsRowAffordable(row) then return false end
+	end
+	if state.canUseOnly then
+		if not Filters.IsRowUsable(row) then return false end
 	end
 	if state.hideAlreadyKnown then
 		if Filters.IsRowAlreadyKnown(row) then return false end

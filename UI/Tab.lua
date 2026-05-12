@@ -3,24 +3,25 @@ NS.UI = NS.UI or {}
 local Tab = {}
 NS.UI.Tab = Tab
 
-local Theme = NS.UI.Themes.Default
-
-local TAB_W, TAB_H = 28, 64
-local Y_OFFSET = -32
+local TAB_SIZE = 32
+local Y_OFFSET = -34
+local LOGO_PATH = "Interface\\AddOns\\tsm-vendor-filter-plus\\Media\\Logo64"
 
 local tabButton
 local clickHandler
 
 local function CreateTab()
 	local b = CreateFrame("Button", "TSMVFP_Tab", UIParent, "BackdropTemplate")
-	b:SetSize(TAB_W, TAB_H)
+	b:SetSize(TAB_SIZE, TAB_SIZE)
 	b:SetFrameStrata("DIALOG") -- above TSM's vendor frame (HIGH)
 	NS.UI.ApplyTheme("ApplyToTab", b)
 
-	b.label = b:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	b.label:SetPoint("CENTER", b, "CENTER", 0, 0)
-	b.label:SetText("F")
-	b.label:SetTextColor(1, 0.82, 0)
+	-- Logo icon as a child texture on top of the themed backdrop. Inset a few
+	-- pixels so the backdrop's border still shows around the edges.
+	b.icon = b:CreateTexture(nil, "ARTWORK")
+	b.icon:SetTexture(LOGO_PATH)
+	b.icon:SetPoint("TOPLEFT", b, "TOPLEFT", 3, -3)
+	b.icon:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -3, 3)
 
 	b:SetScript("OnClick", function() if clickHandler then clickHandler() end end)
 	b:SetScript("OnEnter", function(self)
