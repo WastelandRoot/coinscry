@@ -4,6 +4,16 @@ Vendor-browsing filters for World of Warcraft TBC Anniversary. Best paired with 
 
 TSM ships its vendor filter button as a stub (literal `-- TODO` in `Core/UI/VendoringUI/Buy.lua`), so vendor browsing inside TSM is text-search only. Coinscry adds quality, item-type, item-level, affordability, can-use, already-known, demon-type, and TSM-group filters via a side tab + slide-out panel that follows whichever vendor frame (TSM's or Blizzard's) is in front.
 
+## Screenshots
+
+| Default panel at a weapon vendor | Multiple filters narrowing to relevant recipes |
+|---|---|
+| ![panel](Media/screenshots/01-panel.png) | ![multi-filter](Media/screenshots/02-multi-filter.png) |
+
+| Anchored to TSM's vendor frame, filtered to a single TSM group | Type + subtype narrowing (Projectile → Bullet) |
+|---|---|
+| ![tsm-group](Media/screenshots/03-tsm-group.png) | ![type-subtype](Media/screenshots/04-type-subtype.png) |
+
 ## Installation
 
 1. Download the latest release (or clone this repo into your AddOns folder).
