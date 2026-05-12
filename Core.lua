@@ -121,6 +121,10 @@ TSMVFP:SetScript("OnEvent", function(_, event)
 		OnMerchantClosed()
 	else
 		-- Live-refresh trigger: re-evaluate filter state.
+		-- SPELLS_CHANGED also fires when the pet's spellbook updates (summoning
+		-- a different demon, learning a spell on the current pet), so re-scan
+		-- to refresh row.alreadyKnown — not just re-filter against stale data.
+		if event == "SPELLS_CHANGED" and NS.Scanner then NS.Scanner.Rescan() end
 		if NS.UI and NS.UI.Panel and NS.UI.Panel.Refresh then NS.UI.Panel.Refresh() end
 	end
 end)

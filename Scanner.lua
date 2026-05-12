@@ -6,11 +6,34 @@ local ItemCache = NS.ItemCache
 
 local rows = {}
 
+-- Hidden tooltip used to detect WoW's own "Already known" line, which
+-- covers profession recipes, warlock demon tomes (current pet), and
+-- generic spell-teaching items. Far more reliable than matching
+-- GetItemSpell to IsSpellKnown — grimoires teach a different spell ID
+-- than the one cast by Use:.
+local scanTip
+local function ScanForAlreadyKnown(link)
+	if not link then return false end
+	if not scanTip then
+		scanTip = CreateFrame("GameTooltip", "TSMVFP_Scanner", UIParent, "GameTooltipTemplate")
+		scanTip:SetOwner(UIParent, "ANCHOR_NONE")
+	end
+	scanTip:ClearLines()
+	if not pcall(function() scanTip:SetHyperlink(link) end) then return false end
+	local target = _G.ITEM_SPELL_KNOWN or "Already known"
+	for i = 1, scanTip:NumLines() do
+		local fs = _G["TSMVFP_ScannerTextLeft" .. i]
+		if fs and fs:GetText() == target then return true end
+	end
+	return false
+end
+
 local function ResolveRow(row)
 	if not row.link then return end
 	local q, ilvl, minLvl, classID, subclassID = ItemCache.Get(row.link)
 	row.quality, row.itemLevel, row.minLevel = q, ilvl, minLvl
 	row.classID, row.subclassID = classID, subclassID
+	row.alreadyKnown = ScanForAlreadyKnown(row.link)
 	if TSM_API and TSM_API.ToItemString then
 		local ok, itemString = pcall(TSM_API.ToItemString, row.link)
 		if ok and itemString then

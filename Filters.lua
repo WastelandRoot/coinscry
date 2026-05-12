@@ -62,22 +62,13 @@ function Filters.IsRowAffordable(row)
 end
 
 ---Does this row teach a spell the player or current pet already knows?
----Covers profession recipes (player) and warlock demon tomes (current pet only —
----the API doesn't expose other pets' spellbooks).
----@param row table Scanner row (must have .link)
+---Backed by Scanner's tooltip scan for the "Already known" line, which is
+---what WoW itself uses to render the tooltip warning. Reliable for player
+---spells, pet spells (currently summoned only), and profession recipes.
+---@param row table Scanner row (Scanner.Rescan populates .alreadyKnown)
 ---@return boolean
 function Filters.IsRowAlreadyKnown(row)
-	if not row or not row.link then return false end
-	local spellName, spellID
-	if C_Item and C_Item.GetItemSpell then
-		spellName, spellID = C_Item.GetItemSpell(row.link)
-	elseif GetItemSpell then
-		spellName, spellID = GetItemSpell(row.link)
-	end
-	if not spellID then return false end
-	if IsSpellKnown and IsSpellKnown(spellID) then return true end
-	if IsSpellKnown and IsSpellKnown(spellID, true) then return true end -- current pet
-	return false
+	return row and row.alreadyKnown == true
 end
 
 ---@param row table Scanner row
