@@ -359,21 +359,21 @@ local function CreatePanel()
 	searchBox:HookScript("OnEscapePressed", function(self) self:ClearFocus() end)
 	NS.UI.ApplyTheme("ApplyToEditBox", searchBox)
 
-	-- Row 1: Quality + Group dropdowns
+	-- Row 1: Quality + Group dropdowns. Align left edge with search box (x=16).
 	qualityDropdown = CreateFrame("Frame", "TSMVFP_QualityDropdown", f, "UIDropDownMenuTemplate")
-	qualityDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -56)
+	qualityDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -56)
 	groupDropdown = CreateFrame("Frame", "TSMVFP_GroupDropdown", f, "UIDropDownMenuTemplate")
-	groupDropdown:SetPoint("TOPLEFT", qualityDropdown, "TOPRIGHT", 20, 0)
-	NS.UI.ApplyTheme("ApplyToDropDown", qualityDropdown, 110)
-	NS.UI.ApplyTheme("ApplyToDropDown", groupDropdown, 150)
+	groupDropdown:SetPoint("TOPLEFT", qualityDropdown, "TOPRIGHT", 12, 0)
+	NS.UI.ApplyTheme("ApplyToDropDown", qualityDropdown, 100)
+	NS.UI.ApplyTheme("ApplyToDropDown", groupDropdown, 130)
 
-	-- Row 2: Class + Subclass dropdowns (absolute Y to avoid UIDropDown internal padding surprises)
+	-- Row 2: Type + Subtype dropdowns
 	classDropdown = CreateFrame("Frame", "TSMVFP_ClassDropdown", f, "UIDropDownMenuTemplate")
-	classDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -86)
+	classDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -86)
 	subclassDropdown = CreateFrame("Frame", "TSMVFP_SubclassDropdown", f, "UIDropDownMenuTemplate")
-	subclassDropdown:SetPoint("TOPLEFT", classDropdown, "TOPRIGHT", 20, 0)
-	NS.UI.ApplyTheme("ApplyToDropDown", classDropdown, 130)
-	NS.UI.ApplyTheme("ApplyToDropDown", subclassDropdown, 150)
+	subclassDropdown:SetPoint("TOPLEFT", classDropdown, "TOPRIGHT", 12, 0)
+	NS.UI.ApplyTheme("ApplyToDropDown", classDropdown, 110)
+	NS.UI.ApplyTheme("ApplyToDropDown", subclassDropdown, 130)
 
 	-- Row 3: ilvl range + req level max
 	local ilvlLabel = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
