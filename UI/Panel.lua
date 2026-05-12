@@ -12,11 +12,15 @@ local ROW_H = Theme.rowHeight
 local DEFAULT_VISIBLE_ROWS = 14
 local MAX_ROWS = 25 -- widget pool; user can resize panel up to this many rows tall
 local HEADER_H = 18 -- column header strip above the scroll area
-local TOP_RESERVED = 216 + HEADER_H
+-- TOP_RESERVED varies by collapse state. _COLLAPSED has search + checkboxes
+-- + the collapsible "Filters" header; _EXPANDED additionally has 4 rows of
+-- advanced filter widgets (quality/group, type/subtype, ilvl/req lvl, demon).
+local TOP_RESERVED_COLLAPSED = 100 + HEADER_H
+local TOP_RESERVED_EXPANDED  = 218 + HEADER_H
 local BOT_RESERVED = 30
-local PANEL_H = TOP_RESERVED + DEFAULT_VISIBLE_ROWS * ROW_H + BOT_RESERVED
+local PANEL_H = TOP_RESERVED_EXPANDED + DEFAULT_VISIBLE_ROWS * ROW_H + BOT_RESERVED
 local MIN_PANEL_W = 420
-local MIN_PANEL_H = TOP_RESERVED + 3 * ROW_H + BOT_RESERVED -- enough for header + 3 rows + bottom hint
+local MIN_PANEL_H = TOP_RESERVED_EXPANDED + 3 * ROW_H + BOT_RESERVED -- enough for filters + 3 rows + hint
 
 -- Column geometry. Icon + qty + ilvl + cost are fixed-width;
 -- Name fills the remaining horizontal space.
@@ -38,6 +42,17 @@ local headerRow, hdrName, hdrIlvl, hdrCost
 local scrollFrame
 local closeBtn, resizeGrip -- hidden in embed mode; shown in attached mode
 local rowWidgets = {}
+
+-- Collapsible "Filters" section: search + the three usage checkboxes are
+-- always visible; quality / group / type / subtype / ilvl / req-lvl / demon
+-- live in a collapsible block that toggles via a header button.
+local filtersHeaderBtn, filtersChevron
+local advancedWidgets = {} -- all advanced filter widgets, hide/show as a group
+local advancedCollapsed = true -- default to collapsed; loaded from CoinscryCharDB on first CreatePanel
+
+local function CurrentTopReserved()
+	return advancedCollapsed and TOP_RESERVED_COLLAPSED or TOP_RESERVED_EXPANDED
+end
 
 local QUALITY_CHOICES = {
 	{ label = "Any quality",   value = nil },
@@ -584,25 +599,85 @@ local function CreatePanel()
 	searchBox:HookScript("OnEscapePressed", function(self) self:ClearFocus() end)
 	NS.UI.ApplyTheme("ApplyToEditBox", searchBox)
 
-	-- Row 1: Quality + Group dropdowns. Align left edge with search box (x=16).
+	-- Row 1 (always visible): three filter checkboxes — Can use / Affordable /
+	-- Hide known — directly under the search box.
+	local CHECKBOX_W = 20
+	local LABEL_PAD = 4 -- gap between checkbox right edge and label left edge
+	local CHAIN_GAP = 16 -- gap between previous label end and next checkbox
+	local function MakeFilterCheckbox(text, prevOrX, y, getter, setter)
+		local c = CreateFrame("CheckButton", nil, f, "ChatConfigCheckButtonTemplate")
+		c:SetSize(CHECKBOX_W, CHECKBOX_W)
+		c:SetHitRectInsets(0, 0, 0, 0)
+		if c.Text then c.Text:Hide() end
+		local label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		label:SetText(text)
+		label:SetPoint("LEFT", c, "RIGHT", LABEL_PAD, 1)
+		c.label = label
+		if type(prevOrX) == "number" then
+			c:SetPoint("TOPLEFT", f, "TOPLEFT", prevOrX, y)
+		else
+			local prevWidth = (prevOrX.label and prevOrX.label.GetStringWidth and prevOrX.label:GetStringWidth()) or 70
+			c:SetPoint("TOPLEFT", prevOrX, "TOPLEFT", CHECKBOX_W + LABEL_PAD + prevWidth + CHAIN_GAP, 0)
+		end
+		c:SetChecked(getter() and true or false)
+		c:SetScript("OnClick", function(self)
+			setter(self:GetChecked() and true or nil)
+			Refresh()
+		end)
+		return c
+	end
+
+	canUseCheck = MakeFilterCheckbox(
+		"Can use", 16, -58,
+		function() return state.canUseOnly end,
+		function(v) state.canUseOnly = v end
+	)
+	affordableCheck = MakeFilterCheckbox(
+		"Affordable", canUseCheck, nil,
+		function() return state.affordableOnly end,
+		function(v) state.affordableOnly = v end
+	)
+	knownCheck = MakeFilterCheckbox(
+		"Hide known", affordableCheck, nil,
+		function() return state.hideAlreadyKnown end,
+		function(v) state.hideAlreadyKnown = v end
+	)
+
+	-- Collapsible "Filters" header button at y=-82. Clicking toggles the
+	-- advanced section below it. Chevron texture (Plus when collapsed, Minus
+	-- when expanded) sits to the left of the "Filters" label.
+	filtersHeaderBtn = CreateFrame("Button", nil, f)
+	filtersHeaderBtn:SetSize(110, 20)
+	filtersHeaderBtn:SetPoint("TOPLEFT", f, "TOPLEFT", 14, -82)
+	filtersChevron = filtersHeaderBtn:CreateTexture(nil, "ARTWORK")
+	filtersChevron:SetSize(16, 16)
+	filtersChevron:SetPoint("LEFT", filtersHeaderBtn, "LEFT", 0, 0)
+	filtersHeaderBtn.label = filtersHeaderBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	filtersHeaderBtn.label:SetPoint("LEFT", filtersChevron, "RIGHT", 4, 0)
+	filtersHeaderBtn.label:SetText("Filters")
+	filtersHeaderBtn.label:SetTextColor(1, 0.82, 0)
+	filtersHeaderBtn:SetScript("OnEnter", function(self) self.label:SetTextColor(1, 1, 0.6) end)
+	filtersHeaderBtn:SetScript("OnLeave", function(self) self.label:SetTextColor(1, 0.82, 0) end)
+
+	-- Row A: Quality + Group dropdowns
 	qualityDropdown = CreateFrame("Frame", "Coinscry_QualityDropdown", f, "UIDropDownMenuTemplate")
-	qualityDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -56)
+	qualityDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -100)
 	groupDropdown = CreateFrame("Frame", "Coinscry_GroupDropdown", f, "UIDropDownMenuTemplate")
 	groupDropdown:SetPoint("TOPLEFT", qualityDropdown, "TOPRIGHT", 12, 0)
 	NS.UI.ApplyTheme("ApplyToDropDown", qualityDropdown, 100)
 	NS.UI.ApplyTheme("ApplyToDropDown", groupDropdown, 130)
 
-	-- Row 2: Type + Subtype dropdowns
+	-- Row B: Type + Subtype dropdowns
 	classDropdown = CreateFrame("Frame", "Coinscry_ClassDropdown", f, "UIDropDownMenuTemplate")
-	classDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -86)
+	classDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -130)
 	subclassDropdown = CreateFrame("Frame", "Coinscry_SubclassDropdown", f, "UIDropDownMenuTemplate")
 	subclassDropdown:SetPoint("TOPLEFT", classDropdown, "TOPRIGHT", 12, 0)
 	NS.UI.ApplyTheme("ApplyToDropDown", classDropdown, 110)
 	NS.UI.ApplyTheme("ApplyToDropDown", subclassDropdown, 130)
 
-	-- Row 3: ilvl range + req level max
+	-- Row C: ilvl range + req-level max
 	local ilvlLabel = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	ilvlLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 26, -126)
+	ilvlLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 26, -162)
 	ilvlLabel:SetText("ilvl:")
 
 	ilvlMinBox = MakeNumberBox(f, 36)
@@ -638,70 +713,26 @@ local function CreatePanel()
 		Refresh()
 	end)
 
-	-- Row 4: filter checkboxes, chained so labels don't overlap regardless of
-	-- text length. ChatConfigCheckButtonTemplate's .Text FontString has a wider
-	-- internal frame than its rendered text, so anchoring LEFT-to-RIGHT of the
-	-- label puts the next checkbox far past where text actually ends. Use the
-	-- measured GetStringWidth() to position explicitly.
-	local CHECKBOX_W = 20
-	local LABEL_PAD = 4 -- gap between checkbox right edge and label left edge
-	local CHAIN_GAP = 16 -- gap between previous label end and next checkbox
-	local function MakeFilterCheckbox(text, prevOrX, y, getter, setter)
-		local c = CreateFrame("CheckButton", nil, f, "ChatConfigCheckButtonTemplate")
-		c:SetSize(CHECKBOX_W, CHECKBOX_W)
-		-- ChatConfigCheckButtonTemplate uses a NEGATIVE right hit-rect inset to
-		-- make clicks on the (template-owned) label also toggle the checkbox.
-		-- That extended hit area was eating clicks intended for the next
-		-- checkbox in the row. Explicitly reset to the visible frame size.
-		c:SetHitRectInsets(0, 0, 0, 0)
-		-- Use our own FontString so we control its placement and can measure it.
-		if c.Text then c.Text:Hide() end
-		local label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-		label:SetText(text)
-		label:SetPoint("LEFT", c, "RIGHT", LABEL_PAD, 1)
-		c.label = label
-		if type(prevOrX) == "number" then
-			c:SetPoint("TOPLEFT", f, "TOPLEFT", prevOrX, y)
-		else
-			local prevWidth = (prevOrX.label and prevOrX.label.GetStringWidth and prevOrX.label:GetStringWidth()) or 70
-			c:SetPoint("TOPLEFT", prevOrX, "TOPLEFT", CHECKBOX_W + LABEL_PAD + prevWidth + CHAIN_GAP, 0)
-		end
-		c:SetChecked(getter() and true or false)
-		c:SetScript("OnClick", function(self)
-			setter(self:GetChecked() and true or nil)
-			Refresh()
-		end)
-		return c
-	end
-
-	affordableCheck = MakeFilterCheckbox(
-		"Affordable", 16, -154,
-		function() return state.affordableOnly end,
-		function(v) state.affordableOnly = v end
-	)
-	canUseCheck = MakeFilterCheckbox(
-		"Can use", affordableCheck, nil,
-		function() return state.canUseOnly end,
-		function(v) state.canUseOnly = v end
-	)
-	knownCheck = MakeFilterCheckbox(
-		"Hide known", canUseCheck, nil,
-		function() return state.hideAlreadyKnown end,
-		function(v) state.hideAlreadyKnown = v end
-	)
-
-	-- Row 5: demon-type dropdown (contextual — hidden when vendor has no tomes)
+	-- Row D: demon-type dropdown (contextual — hidden when vendor has no tomes)
 	demonDropdown = CreateFrame("Frame", "Coinscry_DemonDropdown", f, "UIDropDownMenuTemplate")
-	demonDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -184)
+	demonDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -190)
 	NS.UI.ApplyTheme("ApplyToDropDown", demonDropdown, 130)
+
+	-- Track all advanced filter widgets so we can toggle them as a group.
+	advancedWidgets = {
+		qualityDropdown, groupDropdown,
+		classDropdown, subclassDropdown,
+		ilvlLabel, ilvlMinBox, dash, ilvlMaxBox, reqLabel, reqLevelMaxBox,
+		demonDropdown,
+	}
 
 	-- Column header strip (sits above the scroll area). Headers are clickable
 	-- buttons; click toggles sort. Indicator FontString shows ▲/▼ on the
 	-- active column.
 	headerRow = CreateFrame("Frame", nil, f)
 	headerRow:SetHeight(HEADER_H)
-	headerRow:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -(TOP_RESERVED - HEADER_H))
-	headerRow:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -(TOP_RESERVED - HEADER_H))
+	headerRow:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -(CurrentTopReserved() - HEADER_H))
+	headerRow:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -(CurrentTopReserved() - HEADER_H))
 
 	local hdrDivider = headerRow:CreateTexture(nil, "ARTWORK")
 	hdrDivider:SetColorTexture(1, 1, 1, 0.10)
@@ -771,7 +802,7 @@ local function CreatePanel()
 
 	-- Scroll frame + rows
 	scrollFrame = CreateFrame("ScrollFrame", "Coinscry_ScrollFrame", f, "FauxScrollFrameTemplate")
-	scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -TOP_RESERVED)
+	scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -CurrentTopReserved())
 	scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, BOT_RESERVED - 6)
 	scrollFrame:SetScript("OnVerticalScroll", function(self, offset)
 		FauxScrollFrame_OnVerticalScroll(self, offset, ROW_H, UpdateRows)
@@ -796,6 +827,49 @@ local function CreatePanel()
 	InitClassDropdown()
 	InitSubclassDropdown()
 	InitDemonDropdown()
+
+	-- Apply the collapsible-section state. Hides/shows advanced widgets and
+	-- re-anchors the scroll area + header strip to whatever TOP_RESERVED the
+	-- current collapse state dictates.
+	local function ApplyCollapsedLayout()
+		-- Chevron texture: + when collapsed, - when expanded.
+		if filtersChevron then
+			filtersChevron:SetTexture(advancedCollapsed
+				and "Interface\\Buttons\\UI-PlusButton-Up"
+				or "Interface\\Buttons\\UI-MinusButton-Up")
+		end
+		-- Show/hide all advanced filter widgets.
+		for _, w in ipairs(advancedWidgets) do
+			if advancedCollapsed then w:Hide() else w:Show() end
+		end
+		-- The demon dropdown is contextual on top of being advanced; re-run its
+		-- initializer when expanding so it stays hidden at vendors without
+		-- tomes even though the rest of the section is visible.
+		if not advancedCollapsed and InitDemonDropdown then InitDemonDropdown() end
+		-- Re-anchor scroll area + header strip to the appropriate y-offset.
+		local top = CurrentTopReserved()
+		scrollFrame:ClearAllPoints()
+		scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -top)
+		scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, BOT_RESERVED - 6)
+		headerRow:ClearAllPoints()
+		headerRow:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -(top - HEADER_H))
+		headerRow:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -(top - HEADER_H))
+		Refresh()
+	end
+
+	filtersHeaderBtn:SetScript("OnClick", function()
+		advancedCollapsed = not advancedCollapsed
+		if CoinscryCharDB then CoinscryCharDB.advancedCollapsed = advancedCollapsed end
+		ApplyCollapsedLayout()
+	end)
+
+	-- Initial state: load from CoinscryCharDB (default collapsed=false so new
+	-- users see the full filter set on first run).
+	if CoinscryCharDB and CoinscryCharDB.advancedCollapsed ~= nil then
+		advancedCollapsed = CoinscryCharDB.advancedCollapsed and true or false
+	end
+	ApplyCollapsedLayout()
+
 	f:Hide()
 	return f
 end
@@ -818,6 +892,11 @@ local embedToggleOn = false
 local HIDDEN_MERCHANT_WIDGETS = {
 	"MerchantNextPageButton", "MerchantPrevPageButton", "MerchantPageText",
 	"MerchantBuyBackItem", -- "your last sold item" icon; would otherwise float inside our panel
+	-- Repair UI shown at vendors that can repair (armor/weapon vendors).
+	-- Same problem as the buyback slot — Blizzard's MerchantFrame_Update
+	-- re-shows them on each tick and they float inside our panel.
+	"MerchantRepairItemButton", "MerchantRepairAllButton", "MerchantRepairText",
+	"MerchantGuildBankRepairButton",
 }
 for i = 1, 12 do HIDDEN_MERCHANT_WIDGETS[#HIDDEN_MERCHANT_WIDGETS + 1] = "MerchantItem" .. i end
 
@@ -894,8 +973,15 @@ local function ShowVisible()
 end
 
 local function HideVisible()
-	if displayMode == "embedded" then ExitEmbedMode() end
+	-- Order matters: hide our panel *first*, then exit embed mode.
+	-- ExitEmbedMode triggers MerchantFrame_Update, which fires our hook
+	-- (OnMerchantFrameUpdate). That hook re-hides MerchantItem1..12 if the
+	-- panel is still visible — so if we exited embed first, the merchant
+	-- items would be unhidden by ExitEmbedMode and then immediately
+	-- re-hidden by the hook, leaving an empty merchant frame after the user
+	-- clicked the Coinscry tab to close the view.
 	if panelFrame then panelFrame:Hide() end
+	if displayMode == "embedded" then ExitEmbedMode() end
 end
 
 function Panel.Show()

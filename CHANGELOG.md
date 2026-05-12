@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.5.0 — 2026-05-12
+
+**M3-F — collapsible filters + tighter default layout.**
+
+- **Search + checkboxes always on top.** The search box and the three usage checkboxes (Can use / Affordable / Hide known) now live above a new **Filters** header and are always visible. The remaining controls (quality, group, type/subtype, ilvl, req lvl, demon type) collapse behind that header — click it to expand, click again to collapse. Default state is collapsed; toggle state persists per character.
+- **Embed mode: repair widgets hidden.** Vendors that repair were leaking `MerchantRepairItemButton` / `MerchantRepairAllButton` / `MerchantRepairText` icons through the embedded panel; added them to the embed-mode hide list alongside the buyback slot.
+- **Embed mode: closing via the tab restores merchant items.** Toggling Coinscry off via the side tab was leaving MerchantFrame visible but empty. Order-of-operations bug between `ExitEmbedMode` and our `MerchantFrame_Update` hook; fixed.
+- **README screenshots refreshed** for the embedded vanilla mode and the new compact-by-default layout.
+
 ## v0.4.1 — 2026-05-12
 
 **Patch on top of v0.4.0.**
