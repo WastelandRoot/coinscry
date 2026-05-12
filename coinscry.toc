@@ -6,6 +6,7 @@
 ## IconTexture: Interface\AddOns\coinscry\Media\Logo64
 ## X-Category: Auctions
 ## X-License: MIT
+## X-Website: https://github.com/WastelandRoot/coinscry
 ## OptionalDeps: TradeSkillMaster, ElvUI
 ## SavedVariables: CoinscryDB
 ## SavedVariablesPerCharacter: CoinscryCharDB
