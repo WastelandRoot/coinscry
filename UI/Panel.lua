@@ -9,11 +9,14 @@ local Scanner = NS.Scanner
 
 local PANEL_W = 440
 local ROW_H = Theme.rowHeight
-local NUM_VISIBLE_ROWS = 14
+local DEFAULT_VISIBLE_ROWS = 14
+local MAX_ROWS = 25 -- widget pool; user can resize panel up to this many rows tall
 local HEADER_H = 18 -- column header strip above the scroll area
 local TOP_RESERVED = 216 + HEADER_H
 local BOT_RESERVED = 30
-local PANEL_H = TOP_RESERVED + NUM_VISIBLE_ROWS * ROW_H + BOT_RESERVED
+local PANEL_H = TOP_RESERVED + DEFAULT_VISIBLE_ROWS * ROW_H + BOT_RESERVED
+local MIN_PANEL_W = 420
+local MIN_PANEL_H = TOP_RESERVED + 3 * ROW_H + BOT_RESERVED -- enough for header + 3 rows + bottom hint
 
 -- Column geometry. Icon + ilvl + cost are fixed-width and right-aligned;
 -- Name fills the remaining horizontal space.
@@ -116,11 +119,16 @@ StaticPopupDialogs["Coinscry_BUY_QTY"] = {
 
 local function CreateRow(parent, i, anchorTo)
 	local r = CreateFrame("Button", nil, parent)
-	r:SetSize(PANEL_W - 40, ROW_H)
+	r:SetHeight(ROW_H)
+	-- Anchor LEFT + RIGHT to the scroll area so rows stretch horizontally when
+	-- the panel is resized wider. Vertical position is by stacking against the
+	-- previous row, or against the scroll-area top for row 1.
 	if i == 1 then
 		r:SetPoint("TOPLEFT", anchorTo, "TOPLEFT", 0, 0)
+		r:SetPoint("TOPRIGHT", anchorTo, "TOPRIGHT", 0, 0)
 	else
 		r:SetPoint("TOPLEFT", rowWidgets[i - 1], "BOTTOMLEFT", 0, 0)
+		r:SetPoint("TOPRIGHT", rowWidgets[i - 1], "BOTTOMRIGHT", 0, 0)
 	end
 
 	r.bg = r:CreateTexture(nil, "BACKGROUND")
@@ -182,39 +190,53 @@ local function CreateRow(parent, i, anchorTo)
 	return r
 end
 
+---Number of rows that fit in the current scroll-frame height. Recomputed each
+---update so resize Just Works without explicit subscription.
+local function VisibleRowCount()
+	if not scrollFrame then return DEFAULT_VISIBLE_ROWS end
+	local h = scrollFrame:GetHeight() or (DEFAULT_VISIBLE_ROWS * ROW_H)
+	return math.max(1, math.min(MAX_ROWS, math.floor(h / ROW_H)))
+end
+
 local function UpdateRows()
 	if not panelFrame or not panelFrame:IsShown() then return end
 	local offset = FauxScrollFrame_GetOffset(scrollFrame) or 0
-	for i = 1, NUM_VISIBLE_ROWS do
+	local visible = VisibleRowCount()
+	for i = 1, MAX_ROWS do
 		local w = rowWidgets[i]
-		local dataIdx = offset + i
-		local data = filteredOut[dataIdx]
-		if data then
-			w.dataRow = data
-			w.alt = (dataIdx % 2 == 0)
-			w.bg:SetColorTexture(1, 1, 1, w.alt and 0.04 or 0)
-			w.icon:SetTexture(data.texture or "Interface\\Icons\\INV_Misc_QuestionMark")
-			local cr, cg, cb = Theme.QualityColor(data.quality)
-			w.name:SetTextColor(cr, cg, cb)
-			w.name:SetText(data.name or "...")
-			-- iLvl: blank for items where it isn't meaningful (0 / -1 / nil)
-			if data.itemLevel and data.itemLevel > 0 then
-				w.ilvl:SetText(tostring(data.itemLevel))
-			else
-				w.ilvl:SetText("")
-			end
-			local priceText = FormatPrice(data.price)
-			if data.hasExtendedCost then
-				priceText = (priceText == "" and "+ items" or (priceText .. " + items"))
-			end
-			w.price:SetText(priceText)
-			w:Show()
-		else
+		if i > visible then
 			w.dataRow = nil
 			w:Hide()
+		else
+			local dataIdx = offset + i
+			local data = filteredOut[dataIdx]
+			if data then
+				w.dataRow = data
+				w.alt = (dataIdx % 2 == 0)
+				w.bg:SetColorTexture(1, 1, 1, w.alt and 0.04 or 0)
+				w.icon:SetTexture(data.texture or "Interface\\Icons\\INV_Misc_QuestionMark")
+				local cr, cg, cb = Theme.QualityColor(data.quality)
+				w.name:SetTextColor(cr, cg, cb)
+				w.name:SetText(data.name or "...")
+				-- iLvl: blank for items where it isn't meaningful (0 / -1 / nil)
+				if data.itemLevel and data.itemLevel > 0 then
+					w.ilvl:SetText(tostring(data.itemLevel))
+				else
+					w.ilvl:SetText("")
+				end
+				local priceText = FormatPrice(data.price)
+				if data.hasExtendedCost then
+					priceText = (priceText == "" and "+ items" or (priceText .. " + items"))
+				end
+				w.price:SetText(priceText)
+				w:Show()
+			else
+				w.dataRow = nil
+				w:Hide()
+			end
 		end
 	end
-	FauxScrollFrame_Update(scrollFrame, #filteredOut, NUM_VISIBLE_ROWS, ROW_H)
+	FauxScrollFrame_Update(scrollFrame, #filteredOut, visible, ROW_H)
 end
 
 local function UpdateSortIndicators()
@@ -463,6 +485,39 @@ local function CreatePanel()
 	NS.UI.ApplyTheme("ApplyToPanel", f)
 	f:EnableMouse(true)
 
+	-- Resize: bottom-right drag grip; bounds keep the panel usable. Restored
+	-- size from CoinscryCharDB if previously dragged.
+	f:SetResizable(true)
+	if f.SetResizeBounds then
+		f:SetResizeBounds(MIN_PANEL_W, MIN_PANEL_H)
+	elseif f.SetMinResize then
+		f:SetMinResize(MIN_PANEL_W, MIN_PANEL_H)
+	end
+
+	local resizeGrip = CreateFrame("Button", nil, f)
+	resizeGrip:SetSize(16, 16)
+	resizeGrip:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -2, 2)
+	resizeGrip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+	resizeGrip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+	resizeGrip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+	resizeGrip:SetScript("OnMouseDown", function() f:StartSizing("BOTTOMRIGHT") end)
+	resizeGrip:SetScript("OnMouseUp", function()
+		f:StopMovingOrSizing()
+		if CoinscryCharDB then
+			CoinscryCharDB.panelSize = { width = f:GetWidth(), height = f:GetHeight() }
+		end
+	end)
+
+	f:SetScript("OnSizeChanged", function() if Panel.Refresh then Panel.Refresh() end end)
+
+	-- Restore previously saved size if present.
+	if CoinscryCharDB and CoinscryCharDB.panelSize then
+		local sz = CoinscryCharDB.panelSize
+		if sz.width and sz.height and sz.width >= MIN_PANEL_W and sz.height >= MIN_PANEL_H then
+			f:SetSize(sz.width, sz.height)
+		end
+	end
+
 	-- Title + close button
 	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	title:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -10)
@@ -677,13 +732,13 @@ local function CreatePanel()
 	if sb then NS.UI.ApplyTheme("ApplyToScrollBar", sb) end
 
 	rowWidgets = {}
-	for i = 1, NUM_VISIBLE_ROWS do
+	for i = 1, MAX_ROWS do
 		rowWidgets[i] = CreateRow(f, i, scrollFrame)
 	end
 
 	local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 8)
-	hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 8)
+	hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -22, 8) -- room for the resize grip
 	hint:SetJustifyH("LEFT")
 	hint:SetText("clk: buy 1x -- shift-clk: buy stack -- rt-clk: enter qty")
 
