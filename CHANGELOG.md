@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.1 — 2026-05-12
+
+**Patch on top of v0.4.0.**
+
+- **Buyback slot was reappearing inside the embedded view.** Blizzard's `MerchantFrame_Update` re-shows `MerchantBuyBackItem` after our initial `Hide()` whenever the merchant data refreshes. Extended the hook to re-hide our targeted widgets idempotently on every update while embedded and visible.
+- **Settings panel trimmed.** Dropped the subtitle hints under the two Behavior checkboxes; they were noise. Lower sections shift back to their pre-hint y-positions.
+
 ## v0.4.0 — 2026-05-12
 
 **M3-E — embed Coinscry view inside Blizzard's MerchantFrame in vanilla mode.**
