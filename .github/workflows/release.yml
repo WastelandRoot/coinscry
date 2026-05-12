@@ -11,6 +11,10 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # CF_API_KEY lives in the 'main' GitHub environment (set under
+    # Settings → Environments). The job has to declare the environment
+    # explicitly to be able to read the secret.
+    environment: main
     steps:
       - name: Checkout
         uses: actions/checkout@v4
