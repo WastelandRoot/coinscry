@@ -34,23 +34,71 @@ function Filters.NewState()
 	}
 end
 
+-- TBC armor proficiency by class file string. Values per (subclassID):
+--   true       = can wear at any level
+--   <number>   = can wear at level >= <number> (TBC mail/plate gating: Warrior /
+--                Paladin get plate at 40, Hunter / Shaman get mail at 40, etc.)
+--   nil        = cannot wear
+-- subclassIDs:
+--   0=Misc/Cosmetic 1=Cloth 2=Leather 3=Mail 4=Plate 6=Shield 7=Libram 8=Idol
+--   9=Totem 10=Sigil
+local ARMOR_PROFICIENCY = {
+	WARRIOR     = { [0] = true, [1] = true, [2] = true, [3] = 40, [4] = 40, [6] = true },
+	PALADIN     = { [0] = true, [1] = true, [2] = true, [3] = 40, [4] = 40, [6] = true, [7] = true },
+	DEATHKNIGHT = { [0] = true, [1] = true, [2] = true, [3] = true, [4] = true, [10] = true },
+	HUNTER      = { [0] = true, [1] = true, [2] = true, [3] = 40 },
+	SHAMAN      = { [0] = true, [1] = true, [2] = true, [3] = 40, [6] = true, [9] = true },
+	ROGUE       = { [0] = true, [1] = true, [2] = true },
+	PRIEST      = { [0] = true, [1] = true },
+	MAGE        = { [0] = true, [1] = true },
+	WARLOCK     = { [0] = true, [1] = true },
+	DRUID       = { [0] = true, [1] = true, [2] = true, [8] = true },
+}
+
+local function PlayerLevel()
+	return (UnitLevel and UnitLevel("player")) or 1
+end
+
+local function PlayerClassFile()
+	if not UnitClass then return nil end
+	local _, cf = UnitClass("player")
+	return cf
+end
+
+---Can the player wear this armor row? Returns nil for non-armor (caller treats
+---non-armor as not-blocked).
+---@param classID? number
+---@param subclassID? number
+---@return boolean|nil
+local function CanWearArmor(classID, subclassID)
+	if classID ~= 4 then return nil end -- Enum.ItemClass.Armor
+	local cf = PlayerClassFile()
+	if not cf then return nil end
+	local profs = ARMOR_PROFICIENCY[cf]
+	if not profs then return nil end
+	local p = profs[subclassID]
+	if p == nil then return false end
+	if p == true then return true end
+	return PlayerLevel() >= p
+end
+
 ---Can the player use this item right now? Combines:
 ---  - row.minLevel <= player level
----  - WoW's own IsUsableItem (covers armor class proficiency, weapon skill,
----    faction/race restrictions, etc.)
----If IsUsableItem returns nil (item info not yet cached), we don't filter — we
----prefer false positives over spurious hides while data resolves.
+---  - Class armor-proficiency table for Enum.ItemClass.Armor rows
+---Note: weapon-proficiency filtering is deferred — TBC has 18+ weapon
+---subclasses and per-class proficiencies are train-on-level, so weapons
+---always pass for now (we don't want to spuriously hide weapons the
+---player has trained but we can't easily verify).
 ---@param row table Scanner row
 ---@return boolean
 function Filters.IsRowUsable(row)
 	if not row then return false end
-	if row.minLevel and row.minLevel > 0 then
-		local lvl = (UnitLevel and UnitLevel("player")) or 1
-		if lvl < row.minLevel then return false end
+	if row.minLevel and row.minLevel > 0 and PlayerLevel() < row.minLevel then
+		return false
 	end
-	if row.link and IsUsableItem then
-		local usable = IsUsableItem(row.link)
-		if usable == false then return false end -- explicit false only; nil = unknown
+	if row.classID and row.subclassID then
+		local armor = CanWearArmor(row.classID, row.subclassID)
+		if armor == false then return false end
 	end
 	return true
 end
