@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.2.1 — 2026-05-12
+
+Packaging-only release; no functional code changes from v0.2.0.
+
+- README screenshots section.
+- TOC: `X-Website` (GitHub) and `X-Curse-Project-ID` for CurseForge.
+- `.pkgmeta` + GitHub Action: tag pushes automatically build the zip and publish to CurseForge and GitHub Releases.
+
 ## v0.2.0 — 2026-05-12
 
 Renamed from `tsm-vendor-filter-plus` to **Coinscry**. All public symbols, slash commands, and SavedVariables renamed accordingly:
