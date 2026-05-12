@@ -57,6 +57,13 @@ function Theme.ApplyToButton(button)
 	end
 end
 
+-- Default-theme no-op stubs so the shared theme interface is symmetric.
+-- ElvUI overrides these.
+function Theme.ApplyToCloseButton(_) end
+function Theme.ApplyToEditBox(_) end
+function Theme.ApplyToDropDown(_) end
+function Theme.ApplyToScrollBar(_) end
+
 function Theme.QualityColor(quality)
 	local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality or 1]
 	if c then return c.r, c.g, c.b end

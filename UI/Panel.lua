@@ -326,7 +326,7 @@ local function CreatePanel()
 	local f = CreateFrame("Frame", "TSMVFP_Panel", UIParent, "BackdropTemplate")
 	f:SetSize(PANEL_W, PANEL_H)
 	f:SetFrameStrata("DIALOG") -- above TSM's vendor frame (HIGH)
-	Theme.ApplyToPanel(f)
+	NS.UI.ApplyTheme("ApplyToPanel", f)
 	f:EnableMouse(true)
 
 	-- Title + close button
@@ -338,6 +338,7 @@ local function CreatePanel()
 	local closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
 	closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, -4)
 	closeBtn:SetScript("OnClick", function() Panel.Hide() end)
+	NS.UI.ApplyTheme("ApplyToCloseButton", closeBtn)
 
 	-- Search box (SearchBoxTemplate provides magnifier icon, "Search" placeholder, and clear button)
 	searchBox = CreateFrame("EditBox", "TSMVFP_SearchBox", f, "SearchBoxTemplate")
@@ -356,18 +357,23 @@ local function CreatePanel()
 	end)
 	searchBox:HookScript("OnEnterPressed", function(self) self:ClearFocus() end)
 	searchBox:HookScript("OnEscapePressed", function(self) self:ClearFocus() end)
+	NS.UI.ApplyTheme("ApplyToEditBox", searchBox)
 
 	-- Row 1: Quality + Group dropdowns
 	qualityDropdown = CreateFrame("Frame", "TSMVFP_QualityDropdown", f, "UIDropDownMenuTemplate")
 	qualityDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -56)
 	groupDropdown = CreateFrame("Frame", "TSMVFP_GroupDropdown", f, "UIDropDownMenuTemplate")
 	groupDropdown:SetPoint("TOPLEFT", qualityDropdown, "TOPRIGHT", 20, 0)
+	NS.UI.ApplyTheme("ApplyToDropDown", qualityDropdown)
+	NS.UI.ApplyTheme("ApplyToDropDown", groupDropdown)
 
 	-- Row 2: Class + Subclass dropdowns (absolute Y to avoid UIDropDown internal padding surprises)
 	classDropdown = CreateFrame("Frame", "TSMVFP_ClassDropdown", f, "UIDropDownMenuTemplate")
 	classDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 4, -86)
 	subclassDropdown = CreateFrame("Frame", "TSMVFP_SubclassDropdown", f, "UIDropDownMenuTemplate")
 	subclassDropdown:SetPoint("TOPLEFT", classDropdown, "TOPRIGHT", 20, 0)
+	NS.UI.ApplyTheme("ApplyToDropDown", classDropdown)
+	NS.UI.ApplyTheme("ApplyToDropDown", subclassDropdown)
 
 	-- Row 3: ilvl range + req level max
 	local ilvlLabel = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -377,12 +383,14 @@ local function CreatePanel()
 	ilvlMinBox = MakeNumberBox(f, 36)
 	ilvlMinBox:SetPoint("LEFT", ilvlLabel, "RIGHT", 6, 0)
 	ilvlMinBox:SetText(state.ilvlMin and tostring(state.ilvlMin) or "")
+	NS.UI.ApplyTheme("ApplyToEditBox", ilvlMinBox)
 	local dash = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	dash:SetPoint("LEFT", ilvlMinBox, "RIGHT", 4, 0)
 	dash:SetText("-")
 	ilvlMaxBox = MakeNumberBox(f, 36)
 	ilvlMaxBox:SetPoint("LEFT", dash, "RIGHT", 4, 0)
 	ilvlMaxBox:SetText(state.ilvlMax and tostring(state.ilvlMax) or "")
+	NS.UI.ApplyTheme("ApplyToEditBox", ilvlMaxBox)
 
 	ilvlMinBox:SetScript("OnTextChanged", function(self)
 		state.ilvlMin = ParseOptNum(self:GetText())
@@ -399,6 +407,7 @@ local function CreatePanel()
 	reqLevelMaxBox = MakeNumberBox(f, 36)
 	reqLevelMaxBox:SetPoint("LEFT", reqLabel, "RIGHT", 6, 0)
 	reqLevelMaxBox:SetText(state.reqLevelMax and tostring(state.reqLevelMax) or "")
+	NS.UI.ApplyTheme("ApplyToEditBox", reqLevelMaxBox)
 	reqLevelMaxBox:SetScript("OnTextChanged", function(self)
 		state.reqLevelMax = ParseOptNum(self:GetText())
 		Refresh()
@@ -411,6 +420,9 @@ local function CreatePanel()
 	scrollFrame:SetScript("OnVerticalScroll", function(self, offset)
 		FauxScrollFrame_OnVerticalScroll(self, offset, ROW_H, UpdateRows)
 	end)
+	-- FauxScrollFrame's slider lives at _G[name.."ScrollBar"]; hand that to ElvUI.
+	local sb = _G[scrollFrame:GetName() .. "ScrollBar"]
+	if sb then NS.UI.ApplyTheme("ApplyToScrollBar", sb) end
 
 	rowWidgets = {}
 	for i = 1, NUM_VISIBLE_ROWS do
