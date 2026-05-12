@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.4.0 — 2026-05-12
+
+**M3-E — embed Coinscry view inside Blizzard's MerchantFrame in vanilla mode.**
+
+- **Embedded vanilla view.** When a vendor is open without TSM's vendoring UI, clicking the Coinscry tab now *replaces* the Blizzard item grid in-place: MerchantFrame widens to fit, the item buttons + page nav + last-sold buyback icon are hidden, and the filter panel fills that area. Clicking the tab again restores the native grid. TSM4 vendor frame behavior is unchanged (panel still floats beside it).
+- **Buyback tab honored.** Clicking Blizzard's *Buyback* tab hides Coinscry's embedded view so the buyback grid is visible; clicking back to *Merchant* restores the panel if you had it open.
+- **Auto-show setting clarified.** "Auto-open filter panel when a vendor opens" renamed to "Show Coinscry view on vendor open" with a subtitle clarifying that Blizzard / TSM view shows by default.
+- **Reset-filters wording.** "Reset filters when opening a vendor" tweaked to "Clear filters when opening a vendor" plus a subtitle explaining the carry-over alternative.
+- Close `×` button and drag-to-resize grip on our panel are hidden in embedded mode (the tab is the toggle; the panel is sized to MerchantFrame). Both return in attached mode.
+
 ## v0.3.0 — 2026-05-12
 
 **M3-D — columns, sort, drag-to-resize, qty preview, colored prices.**
