@@ -11,19 +11,73 @@ NS.Filters = Filters
 ---@field ilvlMin? number row.itemLevel must be >= this
 ---@field ilvlMax? number row.itemLevel must be <= this
 ---@field reqLevelMax? number row.minLevel must be <= this
+---@field affordableOnly? boolean only show items the player can afford right now
+---@field hideAlreadyKnown? boolean hide spell-teaching items the player or current pet already knows
 
 ---Default empty filter state — no filters applied.
 function Filters.NewState()
 	return {
-		qualityMin    = nil,
-		groupPath     = nil,
-		nameSubstring = nil,
-		classID       = nil,
-		subclassID    = nil,
-		ilvlMin       = nil,
-		ilvlMax       = nil,
-		reqLevelMax   = nil,
+		qualityMin       = nil,
+		groupPath        = nil,
+		nameSubstring    = nil,
+		classID          = nil,
+		subclassID       = nil,
+		ilvlMin          = nil,
+		ilvlMax          = nil,
+		reqLevelMax      = nil,
+		affordableOnly   = nil,
+		hideAlreadyKnown = nil,
 	}
+end
+
+---Can the player afford row right now (gold + any extended currency/item cost)?
+---@param row table Scanner row (must have .index, .price)
+---@return boolean
+function Filters.IsRowAffordable(row)
+	if not row or not row.index then return true end
+	if (row.price or 0) > 0 then
+		if (GetMoney() or 0) < row.price then return false end
+	end
+	local costCount = GetMerchantItemCostInfo and GetMerchantItemCostInfo(row.index) or 0
+	for i = 1, costCount do
+		local _, requiredAmount, link = GetMerchantItemCostItem(row.index, i)
+		if requiredAmount and requiredAmount > 0 then
+			local have = 0
+			if link then
+				local currencyID = link:match("currency:(%d+)")
+				if currencyID and C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+					local info = C_CurrencyInfo.GetCurrencyInfo(tonumber(currencyID))
+					have = (info and info.quantity) or 0
+				else
+					local itemID = link:match("item:(%d+)")
+					if itemID and GetItemCount then
+						have = GetItemCount(tonumber(itemID)) or 0
+					end
+				end
+			end
+			if have < requiredAmount then return false end
+		end
+	end
+	return true
+end
+
+---Does this row teach a spell the player or current pet already knows?
+---Covers profession recipes (player) and warlock demon tomes (current pet only —
+---the API doesn't expose other pets' spellbooks).
+---@param row table Scanner row (must have .link)
+---@return boolean
+function Filters.IsRowAlreadyKnown(row)
+	if not row or not row.link then return false end
+	local spellName, spellID
+	if C_Item and C_Item.GetItemSpell then
+		spellName, spellID = C_Item.GetItemSpell(row.link)
+	elseif GetItemSpell then
+		spellName, spellID = GetItemSpell(row.link)
+	end
+	if not spellID then return false end
+	if IsSpellKnown and IsSpellKnown(spellID) then return true end
+	if IsSpellKnown and IsSpellKnown(spellID, true) then return true end -- current pet
+	return false
 end
 
 ---@param row table Scanner row
@@ -52,6 +106,12 @@ local function MatchOne(row, state)
 	end
 	if state.reqLevelMax ~= nil then
 		if row.minLevel and row.minLevel > state.reqLevelMax then return false end
+	end
+	if state.affordableOnly then
+		if not Filters.IsRowAffordable(row) then return false end
+	end
+	if state.hideAlreadyKnown then
+		if Filters.IsRowAlreadyKnown(row) then return false end
 	end
 	return true
 end

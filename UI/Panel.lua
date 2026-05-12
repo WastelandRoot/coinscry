@@ -10,7 +10,7 @@ local Scanner = NS.Scanner
 local PANEL_W = 440
 local ROW_H = Theme.rowHeight
 local NUM_VISIBLE_ROWS = 14
-local TOP_RESERVED = 156  -- title + search + 3 dropdown rows + ilvl/reqlvl row + padding
+local TOP_RESERVED = 186  -- title + search + 3 dropdown rows + ilvl/reqlvl row + checkbox row + padding
 local BOT_RESERVED = 30
 local PANEL_H = TOP_RESERVED + NUM_VISIBLE_ROWS * ROW_H + BOT_RESERVED
 
@@ -20,6 +20,7 @@ local filteredOut = {}
 local panelFrame
 local searchBox, qualityDropdown, classDropdown, subclassDropdown, groupDropdown
 local ilvlMinBox, ilvlMaxBox, reqLevelMaxBox
+local affordableCheck, knownCheck
 local scrollFrame
 local rowWidgets = {}
 
@@ -413,6 +414,36 @@ local function CreatePanel()
 		Refresh()
 	end)
 
+	-- Row 4: "Only show affordable" + "Hide already known" checkboxes
+	local function MakeFilterCheckbox(text, x, y, getter, setter)
+		local c = CreateFrame("CheckButton", nil, f, "ChatConfigCheckButtonTemplate")
+		c:SetPoint("TOPLEFT", f, "TOPLEFT", x, y)
+		c:SetSize(20, 20)
+		local label = c.Text or _G[(c:GetName() or "") .. "Text"]
+		if not label then
+			label = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+			label:SetPoint("LEFT", c, "RIGHT", 2, 1)
+		end
+		label:SetText(text)
+		c:SetChecked(getter() and true or false)
+		c:SetScript("OnClick", function(self)
+			setter(self:GetChecked() and true or nil)
+			Refresh()
+		end)
+		return c
+	end
+
+	affordableCheck = MakeFilterCheckbox(
+		"Affordable only", 16, -154,
+		function() return state.affordableOnly end,
+		function(v) state.affordableOnly = v end
+	)
+	knownCheck = MakeFilterCheckbox(
+		"Hide already known", 200, -154,
+		function() return state.hideAlreadyKnown end,
+		function(v) state.hideAlreadyKnown = v end
+	)
+
 	-- Scroll frame + rows
 	scrollFrame = CreateFrame("ScrollFrame", "TSMVFP_ScrollFrame", f, "FauxScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -TOP_RESERVED)
@@ -497,6 +528,8 @@ function Panel.ResetFilters()
 	if ilvlMinBox then ilvlMinBox:SetText("") end
 	if ilvlMaxBox then ilvlMaxBox:SetText("") end
 	if reqLevelMaxBox then reqLevelMaxBox:SetText("") end
+	if affordableCheck then affordableCheck:SetChecked(false) end
+	if knownCheck then knownCheck:SetChecked(false) end
 
 	Refresh()
 end

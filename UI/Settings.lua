@@ -239,3 +239,38 @@ end
 function Settings.ShouldResetOnOpen()
 	return GetSetting("resetOnOpen") and true or false
 end
+
+---Register a small canvas in the Interface > AddOns menu that pops our
+---settings frame open. We don't reparent the existing settings frame into
+---the canvas (it's already a polished movable window); instead we just
+---provide a launcher button.
+function Settings.RegisterInterfaceOptions()
+	local panel = CreateFrame("Frame", "TSMVFP_InterfaceOptionsPanel")
+	panel.name = "TSM-VFP"
+
+	local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+	title:SetPoint("TOPLEFT", 16, -16)
+	title:SetText("TSM-VFP — Vendor Filter Plus")
+
+	local sub = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+	sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
+	sub:SetWidth(540); sub:SetJustifyH("LEFT")
+	sub:SetText("Vendor browsing filters for TBC Anniversary. Best paired with TradeSkillMaster.")
+
+	local btn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+	btn:SetSize(200, 28)
+	btn:SetPoint("TOPLEFT", sub, "BOTTOMLEFT", 0, -24)
+	btn:SetText("Open TSM-VFP Settings")
+	btn:SetScript("OnClick", function() Settings.Show() end)
+
+	-- Retail Settings API (available on Anniversary).
+	if _G.Settings and _G.Settings.RegisterCanvasLayoutCategory and _G.Settings.RegisterAddOnCategory then
+		local category = _G.Settings.RegisterCanvasLayoutCategory(panel, "TSM-VFP")
+		_G.Settings.RegisterAddOnCategory(category)
+		return
+	end
+	-- Classic-era fallback.
+	if _G.InterfaceOptions_AddCategory then
+		_G.InterfaceOptions_AddCategory(panel)
+	end
+end

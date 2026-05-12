@@ -88,18 +88,40 @@ local function OnPlayerLogin()
 	if NS.UI.Settings and NS.UI.Settings.ApplyOnLoad then
 		NS.UI.Settings.ApplyOnLoad()
 	end
+	if NS.UI.Settings and NS.UI.Settings.RegisterInterfaceOptions then
+		NS.UI.Settings.RegisterInterfaceOptions()
+	end
 end
 
 TSMVFP:RegisterEvent("PLAYER_LOGIN")
 TSMVFP:RegisterEvent("MERCHANT_SHOW")
 TSMVFP:RegisterEvent("MERCHANT_UPDATE")
 TSMVFP:RegisterEvent("MERCHANT_CLOSED")
+-- These don't affect what's *for sale*, but they change whether each row is
+-- affordable / already known. We don't register them globally — only while
+-- the merchant is open — to avoid burning event traffic when irrelevant.
+
+local LIVE_REFRESH_EVENTS = { "PLAYER_MONEY", "BAG_UPDATE_DELAYED", "CURRENCY_DISPLAY_UPDATE", "SPELLS_CHANGED" }
+
+local function RegisterLiveRefresh()
+	for _, ev in ipairs(LIVE_REFRESH_EVENTS) do TSMVFP:RegisterEvent(ev) end
+end
+local function UnregisterLiveRefresh()
+	for _, ev in ipairs(LIVE_REFRESH_EVENTS) do TSMVFP:UnregisterEvent(ev) end
+end
 
 TSMVFP:SetScript("OnEvent", function(_, event)
 	if event == "PLAYER_LOGIN" then OnPlayerLogin()
-	elseif event == "MERCHANT_SHOW" then OnMerchantShow()
+	elseif event == "MERCHANT_SHOW" then
+		OnMerchantShow()
+		RegisterLiveRefresh()
 	elseif event == "MERCHANT_UPDATE" then OnMerchantUpdate()
-	elseif event == "MERCHANT_CLOSED" then OnMerchantClosed()
+	elseif event == "MERCHANT_CLOSED" then
+		UnregisterLiveRefresh()
+		OnMerchantClosed()
+	else
+		-- Live-refresh trigger: re-evaluate filter state.
+		if NS.UI and NS.UI.Panel and NS.UI.Panel.Refresh then NS.UI.Panel.Refresh() end
 	end
 end)
 
