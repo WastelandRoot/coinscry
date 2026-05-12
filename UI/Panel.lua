@@ -800,18 +800,75 @@ local function CreatePanel()
 end
 
 ---@param anchorFrame Frame the vendor frame (MerchantFrame or TSM's); panel anchors past its right edge
-function Panel.AttachTo(anchorFrame)
+-- Display modes:
+--   "attached" — panel floats beside the anchor frame (used for TSM's vendor frame)
+--   "embedded" — panel replaces MerchantFrame's item grid inside MerchantFrame itself
+local displayMode = "attached"
+local savedMerchantWidth -- set while embedded; nil otherwise
+
+-- Names of Blizzard MerchantFrame widgets to hide while we're embedded over
+-- the item grid. Tabs (Buy/Buyback), money frame, and title stay visible so
+-- the user can still switch tabs or read the merchant's name.
+local HIDDEN_MERCHANT_WIDGETS = {
+	"MerchantNextPageButton", "MerchantPrevPageButton", "MerchantPageText",
+}
+for i = 1, 12 do HIDDEN_MERCHANT_WIDGETS[#HIDDEN_MERCHANT_WIDGETS + 1] = "MerchantItem" .. i end
+
+local EMBED_MERCHANT_WIDTH = PANEL_W + 36 -- width MerchantFrame gets resized to while embedded
+
+local function EnterEmbedMode()
+	if not MerchantFrame or savedMerchantWidth then return end
+	savedMerchantWidth = MerchantFrame:GetWidth()
+	MerchantFrame:SetWidth(EMBED_MERCHANT_WIDTH)
+	for _, name in ipairs(HIDDEN_MERCHANT_WIDGETS) do
+		local f = _G[name]
+		if f and f.Hide then f:Hide() end
+	end
+end
+
+local function ExitEmbedMode()
+	if not savedMerchantWidth then return end
+	if MerchantFrame then MerchantFrame:SetWidth(savedMerchantWidth) end
+	savedMerchantWidth = nil
+	for _, name in ipairs(HIDDEN_MERCHANT_WIDGETS) do
+		local f = _G[name]
+		if f and f.Show then f:Show() end
+	end
+	if _G.MerchantFrame_Update then _G.MerchantFrame_Update() end
+end
+
+---@param anchorFrame Frame the vendor frame (MerchantFrame or TSM's)
+---@param mode? string "embedded" or "attached" (default)
+function Panel.AttachTo(anchorFrame, mode)
 	if not panelFrame then panelFrame = CreatePanel() end
+	local newMode = mode or "attached"
+
+	-- If we're switching away from embed while shown, restore MerchantFrame first.
+	if displayMode == "embedded" and newMode ~= "embedded" then
+		ExitEmbedMode()
+	end
+
+	displayMode = newMode
 	panelFrame:ClearAllPoints()
 	panelFrame:SetParent(anchorFrame)
-	-- Anchor directly to the anchor frame's top-right, not via the tab, so the
-	-- panel's top edge aligns with the anchor's top regardless of the tab Y-offset.
-	-- ~32px right of the anchor leaves room for the tab to sit between them.
-	panelFrame:SetPoint("TOPLEFT", anchorFrame, "TOPRIGHT", 32, 0)
+
+	if displayMode == "embedded" then
+		-- Anchor inside MerchantFrame's content area. Margins clear the title
+		-- bar at the top and the money frame / tabs at the bottom.
+		panelFrame:SetPoint("TOPLEFT", anchorFrame, "TOPLEFT", 12, -32)
+		panelFrame:SetPoint("BOTTOMRIGHT", anchorFrame, "BOTTOMRIGHT", -12, 38)
+		-- If we're currently visible in embed mode, make sure merchant items
+		-- are hidden (e.g., after a frame switch while panel was already open).
+		if panelFrame:IsShown() then EnterEmbedMode() end
+	else
+		panelFrame:SetPoint("TOPLEFT", anchorFrame, "TOPRIGHT", 32, 0)
+		panelFrame:SetSize(PANEL_W, PANEL_H)
+	end
 end
 
 function Panel.Show()
 	if not panelFrame then return end
+	if displayMode == "embedded" then EnterEmbedMode() end
 	panelFrame:Show()
 	-- Re-init the vendor-contextual dropdowns each show in case the vendor changed.
 	if classDropdown then InitClassDropdown() end
@@ -821,6 +878,7 @@ function Panel.Show()
 end
 
 function Panel.Hide()
+	if displayMode == "embedded" then ExitEmbedMode() end
 	if panelFrame then panelFrame:Hide() end
 end
 
@@ -828,6 +886,8 @@ function Panel.Toggle()
 	if not panelFrame then return end
 	if panelFrame:IsShown() then Panel.Hide() else Panel.Show() end
 end
+
+function Panel.GetDisplayMode() return displayMode end
 
 function Panel.IsShown() return panelFrame and panelFrame:IsShown() end
 function Panel.GetState() return state end
