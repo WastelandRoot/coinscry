@@ -30,10 +30,14 @@ end
 -- expose a GetName method via their metatable but the underlying C call
 -- errors with "bad self" when invoked. Always use pcall to probe frames
 -- we don't control.
+-- Swallow errors silently here; we routinely iterate UIParent children that
+-- expose GetName/IsShown via __index but reject the underlying C call. Those
+-- are expected and frequent — surfacing them to the error handler floods it.
+-- Use ReportError() in code paths where a pcall failure is genuinely unexpected.
 local function SafeGetName(frame)
 	if not frame or not frame.GetName then return nil end
 	local ok, name = pcall(frame.GetName, frame)
-	if not ok then ReportError(name); return nil end
+	if not ok then return nil end
 	if type(name) == "string" then return name end
 	return nil
 end
@@ -41,7 +45,7 @@ end
 local function SafeIsShown(frame)
 	if not frame or not frame.IsShown then return false end
 	local ok, shown = pcall(frame.IsShown, frame)
-	if not ok then ReportError(shown); return false end
+	if not ok then return false end
 	return shown == true
 end
 

@@ -160,7 +160,7 @@ SlashCmdList["TSMVFP"] = function(msg)
 	elseif msg == "trace" or msg == "trace on" then
 		if NS.UI and NS.UI.Anchor then
 			NS.UI.Anchor.SetVerbose(true)
-			Log("anchor tracing ON (errors will also forward to your error handler)")
+			Log("anchor tracing ON")
 		end
 	elseif msg == "trace off" then
 		if NS.UI and NS.UI.Anchor then
