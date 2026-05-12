@@ -36,6 +36,7 @@ local ilvlMinBox, ilvlMaxBox, reqLevelMaxBox
 local affordableCheck, canUseCheck, knownCheck
 local headerRow, hdrName, hdrIlvl, hdrCost
 local scrollFrame
+local closeBtn, resizeGrip -- hidden in embed mode; shown in attached mode
 local rowWidgets = {}
 
 local QUALITY_CHOICES = {
@@ -529,7 +530,7 @@ local function CreatePanel()
 		f:SetMinResize(MIN_PANEL_W, MIN_PANEL_H)
 	end
 
-	local resizeGrip = CreateFrame("Button", nil, f)
+	resizeGrip = CreateFrame("Button", nil, f)
 	resizeGrip:SetSize(16, 16)
 	resizeGrip:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -2, 2)
 	resizeGrip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
@@ -559,7 +560,7 @@ local function CreatePanel()
 	title:SetText("Coinscry")
 	title:SetTextColor(1, 0.82, 0)
 
-	local closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+	closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
 	closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, -4)
 	closeBtn:SetScript("OnClick", function() Panel.Hide() end)
 	NS.UI.ApplyTheme("ApplyToCloseButton", closeBtn)
@@ -811,6 +812,7 @@ local savedMerchantWidth -- set while embedded; nil otherwise
 -- the user can still switch tabs or read the merchant's name.
 local HIDDEN_MERCHANT_WIDGETS = {
 	"MerchantNextPageButton", "MerchantPrevPageButton", "MerchantPageText",
+	"MerchantBuyBackItem", -- "your last sold item" icon; would otherwise float inside our panel
 }
 for i = 1, 12 do HIDDEN_MERCHANT_WIDGETS[#HIDDEN_MERCHANT_WIDGETS + 1] = "MerchantItem" .. i end
 
@@ -824,6 +826,11 @@ local function EnterEmbedMode()
 		local f = _G[name]
 		if f and f.Hide then f:Hide() end
 	end
+	-- Hide our own decorations that don't make sense inside MerchantFrame:
+	-- the X-close button (tab toggles the view) and the resize grip (size is
+	-- dictated by the merchant frame's content area).
+	if closeBtn then closeBtn:Hide() end
+	if resizeGrip then resizeGrip:Hide() end
 end
 
 local function ExitEmbedMode()
@@ -834,6 +841,8 @@ local function ExitEmbedMode()
 		local f = _G[name]
 		if f and f.Show then f:Show() end
 	end
+	if closeBtn then closeBtn:Show() end
+	if resizeGrip then resizeGrip:Show() end
 	if _G.MerchantFrame_Update then _G.MerchantFrame_Update() end
 end
 
