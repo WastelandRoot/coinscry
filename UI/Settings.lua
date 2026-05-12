@@ -7,6 +7,7 @@ NS.UI.Settings = Settings
 local DEFAULTS = {
 	resetOnOpen = true,
 	verbose     = false,
+	autoOpen    = false,
 }
 
 local function GetSetting(key)
@@ -109,7 +110,7 @@ end
 
 local function CreateFrame_()
 	local f = CreateFrame("Frame", "TSMVFP_SettingsFrame", UIParent, "BackdropTemplate")
-	f:SetSize(420, 360)
+	f:SetSize(420, 388)
 	f:SetFrameStrata("DIALOG")
 	f:SetPoint("CENTER")
 	f:EnableMouse(true)
@@ -158,15 +159,21 @@ local function CreateFrame_()
 		function(v) SetSetting("resetOnOpen", v) end
 	)
 
+	widgets.autoOpen = MakeCheckbox(
+		f, "Auto-open filter panel when a vendor opens", 16, -136,
+		function() return GetSetting("autoOpen") end,
+		function(v) SetSetting("autoOpen", v) end
+	)
+
 	-- Anchor section
 	local anchorHeader = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	anchorHeader:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -156)
+	anchorHeader:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -178)
 	anchorHeader:SetText("Anchor")
 	anchorHeader:SetTextColor(1, 0.82, 0)
 
 	widgets.anchorMode = MakeDropdown(
 		f, "TSMVFP_SettingsAnchorMode", "Which vendor frame to attach to:",
-		16, -176, 200, ANCHOR_CHOICES,
+		16, -198, 200, ANCHOR_CHOICES,
 		function()
 			return (NS.UI.Anchor and NS.UI.Anchor.GetOverride and NS.UI.Anchor.GetOverride()) or nil
 		end,
@@ -179,12 +186,12 @@ local function CreateFrame_()
 
 	-- Diagnostics section
 	local diagHeader = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	diagHeader:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -252)
+	diagHeader:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -274)
 	diagHeader:SetText("Diagnostics")
 	diagHeader:SetTextColor(1, 0.82, 0)
 
 	widgets.verbose = MakeCheckbox(
-		f, "Anchor tracing", 16, -272,
+		f, "Anchor tracing", 16, -294,
 		function() return GetSetting("verbose") end,
 		function(v)
 			SetSetting("verbose", v)
@@ -209,6 +216,7 @@ function Settings.Show()
 	if not frame then frame = CreateFrame_() end
 	-- Re-sync widget state in case CLI commands changed it since last show.
 	if widgets.resetOnOpen then widgets.resetOnOpen:SetChecked(GetSetting("resetOnOpen")) end
+	if widgets.autoOpen then widgets.autoOpen:SetChecked(GetSetting("autoOpen")) end
 	if widgets.verbose then widgets.verbose:SetChecked(GetSetting("verbose")) end
 	if widgets.anchorMode then
 		UIDropDownMenu_SetText(widgets.anchorMode, AnchorLabelFor(
@@ -238,6 +246,11 @@ end
 ---@return boolean whether filters should reset on each MERCHANT_SHOW
 function Settings.ShouldResetOnOpen()
 	return GetSetting("resetOnOpen") and true or false
+end
+
+---@return boolean whether the filter panel should auto-open on each MERCHANT_SHOW
+function Settings.ShouldAutoOpen()
+	return GetSetting("autoOpen") and true or false
 end
 
 ---Register a small canvas in the Interface > AddOns menu that pops our

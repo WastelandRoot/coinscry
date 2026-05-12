@@ -58,6 +58,48 @@ local function BuyRow(row, qty)
 	print(("|cff66ccffTSM-VFP|r: bought %dx %s"):format(qty, label))
 end
 
+-- Static popup for right-click quantity-buy. Defined once at module load;
+-- the OnAccept closure captures BuyRow above.
+StaticPopupDialogs["TSMVFP_BUY_QTY"] = {
+	text = "Buy how many?\n%s",
+	button1 = ACCEPT,
+	button2 = CANCEL,
+	hasEditBox = 1,
+	maxLetters = 5,
+	timeout = 0,
+	whileDead = 1,
+	hideOnEscape = 1,
+	enterClicksFirstButton = 1,
+	OnShow = function(self)
+		local row = self.data
+		local default = (row and row.stackCount) or 1
+		if row and row.numAvailable and row.numAvailable > 0 then
+			default = math.min(default, row.numAvailable)
+		end
+		self.editBox:SetText(tostring(default))
+		self.editBox:SetNumeric(true)
+		self.editBox:HighlightText()
+		self.editBox:SetFocus()
+	end,
+	OnAccept = function(self)
+		local row = self.data
+		if not row then return end
+		local qty = tonumber(self.editBox:GetText() or "")
+		if not qty or qty < 1 then return end
+		if row.numAvailable and row.numAvailable > 0 then
+			qty = math.min(qty, row.numAvailable)
+		end
+		BuyRow(row, qty)
+	end,
+	EditBoxOnEnterPressed = function(self)
+		local parent = self:GetParent()
+		if parent and parent.button1 and parent.button1:IsEnabled() then
+			StaticPopup_OnClick(parent, 1)
+		end
+	end,
+	EditBoxOnEscapePressed = function(self) self:GetParent():Hide() end,
+}
+
 local function CreateRow(parent, i, anchorTo)
 	local r = CreateFrame("Button", nil, parent)
 	r:SetSize(PANEL_W - 40, ROW_H)
@@ -99,8 +141,14 @@ local function CreateRow(parent, i, anchorTo)
 		GameTooltip:Hide()
 	end)
 	r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-	r:SetScript("OnClick", function(self)
+	r:SetScript("OnClick", function(self, btn)
 		if not self.dataRow then return end
+		if btn == "RightButton" then
+			local label = (self.dataRow.link or self.dataRow.name or "?")
+			local dialog = StaticPopup_Show("TSMVFP_BUY_QTY", label)
+			if dialog then dialog.data = self.dataRow end
+			return
+		end
 		if IsShiftKeyDown() then
 			BuyRow(self.dataRow, self.dataRow.stackCount or 1)
 		else
@@ -512,7 +560,7 @@ local function CreatePanel()
 	hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 12, 8)
 	hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 8)
 	hint:SetJustifyH("LEFT")
-	hint:SetText("click: buy 1 — shift-click: buy stack")
+	hint:SetText("click: buy 1 — shift-click: buy stack — right-click: enter quantity")
 
 	InitQualityDropdown()
 	InitGroupDropdown()

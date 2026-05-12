@@ -21,6 +21,12 @@ TSM ships its vendor filter button as a stub (`-- TODO`), so vendor browsing on 
 - **Hide already known** — covers profession recipes (player spellbook) and warlock demon tomes (currently-summoned pet's spellbook)
 - **Demon type** — Imp / Voidwalker / Succubus / Felhunter / Felguard. Contextual: only appears at vendors selling warlock demon tomes.
 
+## Buying from the filtered list
+
+- **Left-click** a row — buys 1
+- **Shift-left-click** — buys a full stack (e.g., 200 arrows)
+- **Right-click** — opens a quantity dialog (defaults to the stack size, capped at the merchant's remaining supply for limited items)
+
 ## Slash commands
 
 - `/tvfp` (or `/tvfp toggle`) — toggle the filter panel at a vendor

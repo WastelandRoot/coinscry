@@ -45,6 +45,9 @@ local function OnMerchantShow()
 		or (NS.UI.Settings == nil) -- if Settings module isn't loaded yet, default to reset
 	if resetOnOpen and Panel.ResetFilters then Panel.ResetFilters() end
 	Anchor.StartPolling() -- triggers immediate attach via the registered listener
+	if NS.UI.Settings and NS.UI.Settings.ShouldAutoOpen and NS.UI.Settings.ShouldAutoOpen() then
+		if Panel.Show then Panel.Show() end
+	end
 end
 
 local function OnMerchantUpdate()
