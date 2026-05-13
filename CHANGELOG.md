@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.2 — 2026-05-12
+
+**Bug fix.**
+
+- **"Internal Bag Error" when right-click qty > stackSize.** Asking the right-click quantity dialog for more than one natural stack of an item (e.g. 35 meat at a vendor where meat stacks to 20) caused WoW to refuse the purchase entirely with an "Internal Bag Error" — no items bought even though bag space was available. `BuyMerchantItem` caps at one stack per call; the buy path now splits into stackSize-sized chunks so multi-stack purchases work as expected. Shift-left-click is unchanged (it was already passing exactly one stack).
+
 ## v0.5.1 — 2026-05-12
 
 **Hardening release before opening the project to outside contributors. No user-visible features.**

@@ -96,7 +96,20 @@ end
 local function BuyRow(row, qty)
 	if not row or not row.index then return end
 	qty = qty or 1
-	BuyMerchantItem(row.index, qty)
+	-- BuyMerchantItem caps at one natural stack per call. Asking for more
+	-- than stackSize in a single call triggers WoW's "Internal Bag Error"
+	-- before any bag slot is allocated, so we split into stackSize-sized
+	-- chunks. Examples: meat stackSize=20, qty=35 -> two calls (20 then 15);
+	-- arrows stackSize=200, qty=200 -> one call; armor stackSize=1, qty=5
+	-- -> five calls (one per bag slot).
+	local stackSize = row.stackCount or 1
+	if stackSize < 1 then stackSize = 1 end
+	local remaining = qty
+	while remaining > 0 do
+		local thisCall = math.min(remaining, stackSize)
+		BuyMerchantItem(row.index, thisCall)
+		remaining = remaining - thisCall
+	end
 	local label = (row.link or row.name or "?")
 	print(("|cff66ccffCoinscry|r: bought %dx %s"):format(qty, label))
 end
