@@ -31,6 +31,25 @@ local COL_COST_W = 100
 local COL_RIGHT_PAD = 4 -- inside-the-row pad on the right
 local COL_GAP = 6       -- gap between columns
 
+-- ============================================================================
+-- Vertical layout. Y-offsets are measured from the panel's TOPLEFT and are
+-- the single source of truth for widget vertical position. The
+-- TOP_RESERVED_* constants above must stay in sync: TOP_RESERVED_COLLAPSED
+-- reserves space through `filtersHeader` (+ widget height), and
+-- TOP_RESERVED_EXPANDED reserves space through `rowD_demon`.
+-- ============================================================================
+local LAYOUT_Y = {
+	title          = -10,  -- panel title FontString
+	closeBtn       = -4,   -- panel close X button (y from top, x from right)
+	searchBox      = -32,  -- search box (always visible)
+	checkboxRow    = -58,  -- can-use / affordable / hide-known row (always visible)
+	filtersHeader  = -82,  -- collapsible "Filters" header button (always visible)
+	rowA_quality   = -100, -- quality + group dropdowns (advanced)
+	rowB_class     = -130, -- class + subclass dropdowns (advanced)
+	rowC_ilvl      = -162, -- ilvl range + req-level max (advanced)
+	rowD_demon     = -190, -- demon dropdown, contextual (advanced)
+}
+
 local state = nil
 local filteredOut = {}
 
@@ -615,19 +634,19 @@ local function CreatePanel()
 
 	-- Title + close button
 	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	title:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -10)
+	title:SetPoint("TOPLEFT", f, "TOPLEFT", 12, LAYOUT_Y.title)
 	title:SetText("Coinscry")
 	title:SetTextColor(1, 0.82, 0)
 
 	closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-	closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, -4)
+	closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, LAYOUT_Y.closeBtn)
 	closeBtn:SetScript("OnClick", function() Panel.Hide() end)
 	NS.UI.ApplyTheme("ApplyToCloseButton", closeBtn)
 
 	-- Search box (SearchBoxTemplate provides magnifier icon, "Search" placeholder, and clear button)
 	searchBox = CreateFrame("EditBox", "Coinscry_SearchBox", f, "SearchBoxTemplate")
-	searchBox:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -32)
-	searchBox:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -32)
+	searchBox:SetPoint("TOPLEFT", f, "TOPLEFT", 16, LAYOUT_Y.searchBox)
+	searchBox:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, LAYOUT_Y.searchBox)
 	searchBox:SetHeight(20)
 	searchBox:SetAutoFocus(false)
 	searchBox:SetMaxLetters(64)
@@ -672,7 +691,7 @@ local function CreatePanel()
 	end
 
 	canUseCheck = MakeFilterCheckbox(
-		"Can use", 16, -58,
+		"Can use", 16, LAYOUT_Y.checkboxRow,
 		function() return state.canUseOnly end,
 		function(v) state.canUseOnly = v end
 	)
@@ -687,12 +706,12 @@ local function CreatePanel()
 		function(v) state.hideAlreadyKnown = v end
 	)
 
-	-- Collapsible "Filters" header button at y=-82. Clicking toggles the
-	-- advanced section below it. Chevron texture (Plus when collapsed, Minus
-	-- when expanded) sits to the left of the "Filters" label.
+	-- Collapsible "Filters" header button. Clicking toggles the advanced
+	-- section below it. Chevron texture (Plus when collapsed, Minus when
+	-- expanded) sits to the left of the "Filters" label.
 	filtersHeaderBtn = CreateFrame("Button", nil, f)
 	filtersHeaderBtn:SetSize(110, 20)
-	filtersHeaderBtn:SetPoint("TOPLEFT", f, "TOPLEFT", 14, -82)
+	filtersHeaderBtn:SetPoint("TOPLEFT", f, "TOPLEFT", 14, LAYOUT_Y.filtersHeader)
 	filtersChevron = filtersHeaderBtn:CreateTexture(nil, "ARTWORK")
 	filtersChevron:SetSize(16, 16)
 	filtersChevron:SetPoint("LEFT", filtersHeaderBtn, "LEFT", 0, 0)
@@ -705,7 +724,7 @@ local function CreatePanel()
 
 	-- Row A: Quality + Group dropdowns
 	qualityDropdown = CreateFrame("Frame", "Coinscry_QualityDropdown", f, "UIDropDownMenuTemplate")
-	qualityDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -100)
+	qualityDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, LAYOUT_Y.rowA_quality)
 	groupDropdown = CreateFrame("Frame", "Coinscry_GroupDropdown", f, "UIDropDownMenuTemplate")
 	groupDropdown:SetPoint("TOPLEFT", qualityDropdown, "TOPRIGHT", 12, 0)
 	NS.UI.ApplyTheme("ApplyToDropDown", qualityDropdown, 100)
@@ -713,7 +732,7 @@ local function CreatePanel()
 
 	-- Row B: Type + Subtype dropdowns
 	classDropdown = CreateFrame("Frame", "Coinscry_ClassDropdown", f, "UIDropDownMenuTemplate")
-	classDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -130)
+	classDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, LAYOUT_Y.rowB_class)
 	subclassDropdown = CreateFrame("Frame", "Coinscry_SubclassDropdown", f, "UIDropDownMenuTemplate")
 	subclassDropdown:SetPoint("TOPLEFT", classDropdown, "TOPRIGHT", 12, 0)
 	NS.UI.ApplyTheme("ApplyToDropDown", classDropdown, 110)
@@ -721,7 +740,7 @@ local function CreatePanel()
 
 	-- Row C: ilvl range + req-level max
 	local ilvlLabel = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	ilvlLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 26, -162)
+	ilvlLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 26, LAYOUT_Y.rowC_ilvl)
 	ilvlLabel:SetText("ilvl:")
 
 	ilvlMinBox = MakeNumberBox(f, 36)
@@ -759,7 +778,7 @@ local function CreatePanel()
 
 	-- Row D: demon-type dropdown (contextual — hidden when vendor has no tomes)
 	demonDropdown = CreateFrame("Frame", "Coinscry_DemonDropdown", f, "UIDropDownMenuTemplate")
-	demonDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -190)
+	demonDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, LAYOUT_Y.rowD_demon)
 	NS.UI.ApplyTheme("ApplyToDropDown", demonDropdown, 130)
 
 	-- Track all advanced filter widgets so we can toggle them as a group.
