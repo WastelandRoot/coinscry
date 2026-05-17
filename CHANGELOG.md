@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.4 — 2026-05-16
+
+**Internal refactor — no user-visible changes.** Second in the contributor-prep series after v0.5.1.
+
+- **`CreatePanel` split into `Build*` helpers.** The ~280-line block became a ~20-line orchestrator calling `BuildFrame` / `BuildSearchBox` / `BuildCheckboxRow` / `BuildFiltersHeader` / `BuildAdvancedFilters` / `BuildHeaderStrip` / `BuildScrollArea`. Each helper is short enough to read end-to-end and now carries its own doc comment.
+- **`ApplyCollapsedLayout` lifted to module scope.** Was a closure inside `CreatePanel`; pulling it out lets the filters-header `OnClick` and the initial-apply share one implementation instead of redefining it on every panel creation.
+- **Y-offset magic numbers centralized.** The scattered `-32` / `-58` / `-82` / `-100` / `-130` / `-162` / `-190` y-offsets in `CreatePanel` are now a single `LAYOUT_Y` table near the top of `UI/Panel.lua`, with a comment tying them to the `TOP_RESERVED_*` collapse-state constants.
+
 ## v0.5.3 — 2026-05-16
 
 **Right-click qty dialog hardening.** Three latent bugs in the right-click quantity-buy popup, found during the v0.5.1/v0.5.2 contributor-prep review.

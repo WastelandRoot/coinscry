@@ -31,6 +31,25 @@ local COL_COST_W = 100
 local COL_RIGHT_PAD = 4 -- inside-the-row pad on the right
 local COL_GAP = 6       -- gap between columns
 
+-- ============================================================================
+-- Vertical layout. Y-offsets are measured from the panel's TOPLEFT and are
+-- the single source of truth for widget vertical position. The
+-- TOP_RESERVED_* constants above must stay in sync: TOP_RESERVED_COLLAPSED
+-- reserves space through `filtersHeader` (+ widget height), and
+-- TOP_RESERVED_EXPANDED reserves space through `rowD_demon`.
+-- ============================================================================
+local LAYOUT_Y = {
+	title          = -10,  -- panel title FontString
+	closeBtn       = -4,   -- panel close X button (y from top, x from right)
+	searchBox      = -32,  -- search box (always visible)
+	checkboxRow    = -58,  -- can-use / affordable / hide-known row (always visible)
+	filtersHeader  = -82,  -- collapsible "Filters" header button (always visible)
+	rowA_quality   = -100, -- quality + group dropdowns (advanced)
+	rowB_class     = -130, -- class + subclass dropdowns (advanced)
+	rowC_ilvl      = -162, -- ilvl range + req-level max (advanced)
+	rowD_demon     = -190, -- demon dropdown, contextual (advanced)
+}
+
 local state = nil
 local filteredOut = {}
 
@@ -568,12 +587,52 @@ local function ParseOptNum(text)
 end
 
 -- ============================================================================
--- Panel
+-- Collapsible-section layout. Lifted out of CreatePanel so the filters-header
+-- OnClick (wired in BuildFiltersHeader) can call it as an upvalue and the
+-- initial-state apply at the end of CreatePanel can share the implementation.
+-- Safe to call once panelFrame and the advanced widgets have been built.
+-- ============================================================================
+local function ApplyCollapsedLayout()
+	-- Chevron texture: + when collapsed, - when expanded.
+	if filtersChevron then
+		filtersChevron:SetTexture(advancedCollapsed
+			and "Interface\\Buttons\\UI-PlusButton-Up"
+			or "Interface\\Buttons\\UI-MinusButton-Up")
+	end
+	-- Show/hide all advanced filter widgets.
+	for _, w in ipairs(advancedWidgets) do
+		if advancedCollapsed then w:Hide() else w:Show() end
+	end
+	-- The demon dropdown is contextual on top of being advanced; re-run its
+	-- initializer when expanding so it stays hidden at vendors without
+	-- tomes even though the rest of the section is visible.
+	if not advancedCollapsed and InitDemonDropdown then InitDemonDropdown() end
+	-- Re-anchor scroll area + header strip to the appropriate y-offset.
+	local top = CurrentTopReserved()
+	if scrollFrame and panelFrame then
+		scrollFrame:ClearAllPoints()
+		scrollFrame:SetPoint("TOPLEFT", panelFrame, "TOPLEFT", 10, -top)
+		scrollFrame:SetPoint("BOTTOMRIGHT", panelFrame, "BOTTOMRIGHT", -28, BOT_RESERVED - 6)
+	end
+	if headerRow and panelFrame then
+		headerRow:ClearAllPoints()
+		headerRow:SetPoint("TOPLEFT", panelFrame, "TOPLEFT", 10, -(top - HEADER_H))
+		headerRow:SetPoint("TOPRIGHT", panelFrame, "TOPRIGHT", -28, -(top - HEADER_H))
+	end
+	Refresh()
+end
+
+-- ============================================================================
+-- Panel construction. Each Build* helper builds one logical section and
+-- stores any widgets it needs to expose into module-level upvalues, so the
+-- helpers can stay parameter-light. CreatePanel below is the orchestrator
+-- (one call per section + dropdown init + collapsed-state apply).
 -- ============================================================================
 
-local function CreatePanel()
-	state = state or Filters.NewState() -- always start fresh; filters reset per vendor visit
-
+---Build the panel frame: backdrop, sizing, resize grip + size persistence,
+---title, close button.
+---@return Frame the constructed panel frame
+local function BuildFrame()
 	local f = CreateFrame("Frame", "Coinscry_Panel", UIParent, "BackdropTemplate")
 	f:SetSize(PANEL_W, PANEL_H)
 	f:SetFrameStrata("DIALOG") -- above TSM's vendor frame (HIGH)
@@ -615,19 +674,24 @@ local function CreatePanel()
 
 	-- Title + close button
 	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	title:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -10)
+	title:SetPoint("TOPLEFT", f, "TOPLEFT", 12, LAYOUT_Y.title)
 	title:SetText("Coinscry")
 	title:SetTextColor(1, 0.82, 0)
 
 	closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-	closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, -4)
+	closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -4, LAYOUT_Y.closeBtn)
 	closeBtn:SetScript("OnClick", function() Panel.Hide() end)
 	NS.UI.ApplyTheme("ApplyToCloseButton", closeBtn)
 
-	-- Search box (SearchBoxTemplate provides magnifier icon, "Search" placeholder, and clear button)
+	return f
+end
+
+---Search box (SearchBoxTemplate provides magnifier icon + "Search" placeholder
+---+ clear button). Hooks into nameSubstring filter state on text change.
+local function BuildSearchBox(f)
 	searchBox = CreateFrame("EditBox", "Coinscry_SearchBox", f, "SearchBoxTemplate")
-	searchBox:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -32)
-	searchBox:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -32)
+	searchBox:SetPoint("TOPLEFT", f, "TOPLEFT", 16, LAYOUT_Y.searchBox)
+	searchBox:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, LAYOUT_Y.searchBox)
 	searchBox:SetHeight(20)
 	searchBox:SetAutoFocus(false)
 	searchBox:SetMaxLetters(64)
@@ -642,9 +706,12 @@ local function CreatePanel()
 	searchBox:HookScript("OnEnterPressed", function(self) self:ClearFocus() end)
 	searchBox:HookScript("OnEscapePressed", function(self) self:ClearFocus() end)
 	NS.UI.ApplyTheme("ApplyToEditBox", searchBox)
+end
 
-	-- Row 1 (always visible): three filter checkboxes — Can use / Affordable /
-	-- Hide known — directly under the search box.
+---Three always-visible filter checkboxes (Can use / Affordable / Hide known).
+---Chained left-to-right; each anchors off the previous one's label width so
+---they stay visually adjacent regardless of locale.
+local function BuildCheckboxRow(f)
 	local CHECKBOX_W = 20
 	local LABEL_PAD = 4 -- gap between checkbox right edge and label left edge
 	local CHAIN_GAP = 16 -- gap between previous label end and next checkbox
@@ -672,7 +739,7 @@ local function CreatePanel()
 	end
 
 	canUseCheck = MakeFilterCheckbox(
-		"Can use", 16, -58,
+		"Can use", 16, LAYOUT_Y.checkboxRow,
 		function() return state.canUseOnly end,
 		function(v) state.canUseOnly = v end
 	)
@@ -686,13 +753,15 @@ local function CreatePanel()
 		function() return state.hideAlreadyKnown end,
 		function(v) state.hideAlreadyKnown = v end
 	)
+end
 
-	-- Collapsible "Filters" header button at y=-82. Clicking toggles the
-	-- advanced section below it. Chevron texture (Plus when collapsed, Minus
-	-- when expanded) sits to the left of the "Filters" label.
+---Collapsible "Filters" header button. OnClick toggles `advancedCollapsed`,
+---persists it to CoinscryCharDB, and re-applies the collapsed layout via the
+---module-level ApplyCollapsedLayout helper.
+local function BuildFiltersHeader(f)
 	filtersHeaderBtn = CreateFrame("Button", nil, f)
 	filtersHeaderBtn:SetSize(110, 20)
-	filtersHeaderBtn:SetPoint("TOPLEFT", f, "TOPLEFT", 14, -82)
+	filtersHeaderBtn:SetPoint("TOPLEFT", f, "TOPLEFT", 14, LAYOUT_Y.filtersHeader)
 	filtersChevron = filtersHeaderBtn:CreateTexture(nil, "ARTWORK")
 	filtersChevron:SetSize(16, 16)
 	filtersChevron:SetPoint("LEFT", filtersHeaderBtn, "LEFT", 0, 0)
@@ -702,10 +771,20 @@ local function CreatePanel()
 	filtersHeaderBtn.label:SetTextColor(1, 0.82, 0)
 	filtersHeaderBtn:SetScript("OnEnter", function(self) self.label:SetTextColor(1, 1, 0.6) end)
 	filtersHeaderBtn:SetScript("OnLeave", function(self) self.label:SetTextColor(1, 0.82, 0) end)
+	filtersHeaderBtn:SetScript("OnClick", function()
+		advancedCollapsed = not advancedCollapsed
+		if CoinscryCharDB then CoinscryCharDB.advancedCollapsed = advancedCollapsed end
+		ApplyCollapsedLayout()
+	end)
+end
 
+---Advanced filter widgets (quality, group, type, subtype, ilvl range,
+---req-level max, demon-type). All hidden as a group when the Filters header
+---is collapsed; populates the module-level `advancedWidgets` list.
+local function BuildAdvancedFilters(f)
 	-- Row A: Quality + Group dropdowns
 	qualityDropdown = CreateFrame("Frame", "Coinscry_QualityDropdown", f, "UIDropDownMenuTemplate")
-	qualityDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -100)
+	qualityDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, LAYOUT_Y.rowA_quality)
 	groupDropdown = CreateFrame("Frame", "Coinscry_GroupDropdown", f, "UIDropDownMenuTemplate")
 	groupDropdown:SetPoint("TOPLEFT", qualityDropdown, "TOPRIGHT", 12, 0)
 	NS.UI.ApplyTheme("ApplyToDropDown", qualityDropdown, 100)
@@ -713,7 +792,7 @@ local function CreatePanel()
 
 	-- Row B: Type + Subtype dropdowns
 	classDropdown = CreateFrame("Frame", "Coinscry_ClassDropdown", f, "UIDropDownMenuTemplate")
-	classDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -130)
+	classDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, LAYOUT_Y.rowB_class)
 	subclassDropdown = CreateFrame("Frame", "Coinscry_SubclassDropdown", f, "UIDropDownMenuTemplate")
 	subclassDropdown:SetPoint("TOPLEFT", classDropdown, "TOPRIGHT", 12, 0)
 	NS.UI.ApplyTheme("ApplyToDropDown", classDropdown, 110)
@@ -721,7 +800,7 @@ local function CreatePanel()
 
 	-- Row C: ilvl range + req-level max
 	local ilvlLabel = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	ilvlLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 26, -162)
+	ilvlLabel:SetPoint("TOPLEFT", f, "TOPLEFT", 26, LAYOUT_Y.rowC_ilvl)
 	ilvlLabel:SetText("ilvl:")
 
 	ilvlMinBox = MakeNumberBox(f, 36)
@@ -759,7 +838,7 @@ local function CreatePanel()
 
 	-- Row D: demon-type dropdown (contextual — hidden when vendor has no tomes)
 	demonDropdown = CreateFrame("Frame", "Coinscry_DemonDropdown", f, "UIDropDownMenuTemplate")
-	demonDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -190)
+	demonDropdown:SetPoint("TOPLEFT", f, "TOPLEFT", 16, LAYOUT_Y.rowD_demon)
 	NS.UI.ApplyTheme("ApplyToDropDown", demonDropdown, 130)
 
 	-- Track all advanced filter widgets so we can toggle them as a group.
@@ -769,10 +848,12 @@ local function CreatePanel()
 		ilvlLabel, ilvlMinBox, dash, ilvlMaxBox, reqLabel, reqLevelMaxBox,
 		demonDropdown,
 	}
+end
 
-	-- Column header strip (sits above the scroll area). Headers are clickable
-	-- buttons; click toggles sort. Indicator FontString shows ▲/▼ on the
-	-- active column.
+---Column header strip above the scroll area. Headers are clickable buttons;
+---click toggles sort, second click on the active column flips direction.
+---Indicator FontString shows the up/down arrow on the active column.
+local function BuildHeaderStrip(f)
 	headerRow = CreateFrame("Frame", nil, f)
 	headerRow:SetHeight(HEADER_H)
 	headerRow:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -(CurrentTopReserved() - HEADER_H))
@@ -844,8 +925,11 @@ local function CreatePanel()
 	hdrName:SetScript("OnClick", OnHeaderClick("name"))
 	hdrIlvl:SetScript("OnClick", OnHeaderClick("itemLevel"))
 	hdrCost:SetScript("OnClick", OnHeaderClick("price"))
+end
 
-	-- Scroll frame + rows
+---Scrolling row area: a FauxScrollFrame backed by a MAX_ROWS widget pool, plus
+---the bottom-of-panel click-mode hint.
+local function BuildScrollArea(f)
 	scrollFrame = CreateFrame("ScrollFrame", "Coinscry_ScrollFrame", f, "FauxScrollFrameTemplate")
 	scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -CurrentTopReserved())
 	scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, BOT_RESERVED - 6)
@@ -866,6 +950,28 @@ local function CreatePanel()
 	hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -22, 8) -- room for the resize grip
 	hint:SetJustifyH("LEFT")
 	hint:SetText("clk: buy 1x -- shift-clk: buy stack -- rt-clk: enter qty")
+end
+
+-- ============================================================================
+-- Panel
+-- ============================================================================
+
+local function CreatePanel()
+	state = state or Filters.NewState() -- always start fresh; filters reset per vendor visit
+
+	local f = BuildFrame()
+	-- Assign module-level panelFrame early so ApplyCollapsedLayout (called
+	-- below, before CreatePanel returns) finds the frame as an upvalue. The
+	-- external `panelFrame = CreatePanel()` in Panel.AttachTo becomes a no-op
+	-- assignment of the same value.
+	panelFrame = f
+
+	BuildSearchBox(f)
+	BuildCheckboxRow(f)
+	BuildFiltersHeader(f)
+	BuildAdvancedFilters(f)
+	BuildHeaderStrip(f)
+	BuildScrollArea(f)
 
 	InitQualityDropdown()
 	InitGroupDropdown()
@@ -873,43 +979,9 @@ local function CreatePanel()
 	InitSubclassDropdown()
 	InitDemonDropdown()
 
-	-- Apply the collapsible-section state. Hides/shows advanced widgets and
-	-- re-anchors the scroll area + header strip to whatever TOP_RESERVED the
-	-- current collapse state dictates.
-	local function ApplyCollapsedLayout()
-		-- Chevron texture: + when collapsed, - when expanded.
-		if filtersChevron then
-			filtersChevron:SetTexture(advancedCollapsed
-				and "Interface\\Buttons\\UI-PlusButton-Up"
-				or "Interface\\Buttons\\UI-MinusButton-Up")
-		end
-		-- Show/hide all advanced filter widgets.
-		for _, w in ipairs(advancedWidgets) do
-			if advancedCollapsed then w:Hide() else w:Show() end
-		end
-		-- The demon dropdown is contextual on top of being advanced; re-run its
-		-- initializer when expanding so it stays hidden at vendors without
-		-- tomes even though the rest of the section is visible.
-		if not advancedCollapsed and InitDemonDropdown then InitDemonDropdown() end
-		-- Re-anchor scroll area + header strip to the appropriate y-offset.
-		local top = CurrentTopReserved()
-		scrollFrame:ClearAllPoints()
-		scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -top)
-		scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, BOT_RESERVED - 6)
-		headerRow:ClearAllPoints()
-		headerRow:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -(top - HEADER_H))
-		headerRow:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, -(top - HEADER_H))
-		Refresh()
-	end
-
-	filtersHeaderBtn:SetScript("OnClick", function()
-		advancedCollapsed = not advancedCollapsed
-		if CoinscryCharDB then CoinscryCharDB.advancedCollapsed = advancedCollapsed end
-		ApplyCollapsedLayout()
-	end)
-
-	-- Initial state: load from CoinscryCharDB (default collapsed=false so new
-	-- users see the full filter set on first run).
+	-- Initial collapsed-state: load from SavedVariables (default `true` from
+	-- the module-level declaration; only override if SavedVariables has an
+	-- explicit value).
 	if CoinscryCharDB and CoinscryCharDB.advancedCollapsed ~= nil then
 		advancedCollapsed = CoinscryCharDB.advancedCollapsed and true or false
 	end
