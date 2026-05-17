@@ -112,6 +112,47 @@ local function FormatPrice(copper)
 	return table.concat(out, " ")
 end
 
+---Aggregate free bag slots across the player's bags. Uses the modern
+---CalculateTotalNumberOfFreeBagSlots when available, falling back to a
+---per-bag GetContainerNumFreeSlots loop on older clients.
+local function GetFreeBagSlots()
+	if _G.CalculateTotalNumberOfFreeBagSlots then
+		return _G.CalculateTotalNumberOfFreeBagSlots() or 0
+	end
+	local total = 0
+	if _G.GetContainerNumFreeSlots then
+		for bag = 0, (_G.NUM_BAG_SLOTS or 4) do
+			total = total + (_G.GetContainerNumFreeSlots(bag) or 0)
+		end
+	end
+	return total
+end
+
+---Estimate the worst-case number of *new* bag slots needed to buy `qty` of
+---this row, accounting for any partial stack of the same item already in
+---bags that the purchase can merge into. For stackSize=1 items, no merging
+---is possible and every unit needs its own slot. For stackable items, the
+---purchase first fills any existing partial stack, then needs
+---ceil((qty - partialSpace) / stackSize) fresh slots.
+---@param row table Scanner row (has .link, .stackCount)
+---@param qty number desired purchase count
+---@return number
+local function EstimateRequiredBagSlots(row, qty)
+	local ss = row.stackCount or 1
+	if ss < 1 then ss = 1 end
+	local existing = 0
+	if row.link and _G.GetItemCount then
+		local itemID = tonumber(row.link:match("item:(%d+)"))
+		if itemID then existing = _G.GetItemCount(itemID) or 0 end
+	end
+	local partialSpace = 0
+	if ss > 1 and existing > 0 then
+		partialSpace = (ss - (existing % ss)) % ss
+	end
+	local newSpaceNeeded = math.max(0, qty - partialSpace)
+	return math.ceil(newSpaceNeeded / ss)
+end
+
 local function BuyRow(row, qty)
 	if not row or not row.index then return end
 	qty = qty or 1
@@ -123,6 +164,21 @@ local function BuyRow(row, qty)
 	-- -> five calls (one per bag slot).
 	local stackSize = row.stackCount or 1
 	if stackSize < 1 then stackSize = 1 end
+
+	-- Bag-space precheck. BuyMerchantItem doesn't enqueue a confirmation —
+	-- it fails silently per-call with "Internal Bag Error" if there's no
+	-- room. Particularly nasty for stackSize=1 items split across many
+	-- calls: the first few succeed, then the rest fail mid-purchase. Bail
+	-- up front if we know it won't fit.
+	local needed = EstimateRequiredBagSlots(row, qty)
+	local free = GetFreeBagSlots()
+	if needed > free then
+		local label = (row.link or row.name or "?")
+		print(("|cff66ccffCoinscry|r: %dx %s needs %d free bag slot%s, only %d free. Purchase cancelled — free up bags or buy fewer.")
+			:format(qty, label, needed, needed == 1 and "" or "s", free))
+		return
+	end
+
 	local remaining = qty
 	while remaining > 0 do
 		local thisCall = math.min(remaining, stackSize)

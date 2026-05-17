@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5.5 — 2026-05-16
+
+**Bug fix.**
+
+- **"Internal Bag Error" on multi-slot purchases without enough free bags.** Buying N of a non-stackable item (e.g. 5 swords) issues N `BuyMerchantItem` calls, each needing its own bag slot — if you only had 3 free slots when you asked for 5, the first 3 succeeded and the last 2 silently failed mid-purchase. The buy path now pre-checks free bag slots against estimated requirement (accounting for existing partial stacks for stackable items) and aborts the whole purchase with a chat message if it won't fit. Right-click qty dialog and shift-click stack buys are both covered.
+
 ## v0.5.4 — 2026-05-16
 
 **Internal refactor — no user-visible changes.** Second in the contributor-prep series after v0.5.1.
