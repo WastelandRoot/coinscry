@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.5.3 — 2026-05-16
+
+**Right-click qty dialog hardening.** Three latent bugs in the right-click quantity-buy popup, found during the v0.5.1/v0.5.2 contributor-prep review.
+
+- **Default qty in the dialog was always 1.** `dialog.data` was assigned *after* `StaticPopup_Show` returned, but `StaticPopup_Show` invokes `OnShow` synchronously — so by the time `OnShow` read `self.data` for the row's stackCount, the field was still nil (or worse, the stale row from a previous right-click). The default fell through to `1` and the `numAvailable` cap in `OnShow` silently no-op'd. Data is now passed as the documented 4th arg to `StaticPopup_Show`.
+- **Buy-wrong-item race.** If `MERCHANT_UPDATE` fired between right-click and accept, `Scanner.Rescan()` would `wipe()` the row table; the popup still held a reference to the old row, but `row.index` could now point at a different merchant slot. `OnAccept` now verifies the slot's current itemLink against a fingerprint captured at right-click time and aborts the purchase with a chat message if they don't match. The `numAvailable` cap is also re-read live rather than trusted from the snapshot.
+- **Popup outlived its merchant.** Closing the merchant window left the right-click dialog open; accepting it after walking to a different vendor would fire `BuyMerchantItem` against an unrelated slot. `MERCHANT_CLOSED` now dismisses the dialog.
+- **Enter-to-submit reliability.** `enterClicksFirstButton` isn't honored by every classic-derived StaticPopup fork. Added an explicit `EditBoxOnEnterPressed` handler as a fallback.
+
 ## v0.5.2 — 2026-05-12
 
 **Bug fix.**

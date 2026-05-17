@@ -65,6 +65,10 @@ end
 
 local function OnMerchantClosed()
 	if NS.UI.Anchor then NS.UI.Anchor.StopPolling() end
+	-- Dismiss the right-click qty dialog if it's still up. Otherwise the user
+	-- could walk to another vendor and accept it, firing BuyMerchantItem
+	-- against a slot that now holds a completely different item.
+	if StaticPopup_Hide then StaticPopup_Hide("Coinscry_BUY_QTY") end
 end
 
 local function GetVersion()

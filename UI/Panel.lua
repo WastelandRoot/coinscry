@@ -123,6 +123,10 @@ local function PopupEditBox(self)
 	return self.EditBox or self.editBox
 end
 
+-- Popup data shape: { row = ScanRow, link = string } where `link` is the
+-- row's itemLink captured at right-click time, used as a fingerprint in
+-- OnAccept to detect MERCHANT_UPDATE-induced row reshuffles between popup
+-- open and accept.
 StaticPopupDialogs["Coinscry_BUY_QTY"] = {
 	text = "Buy how many?\n%s",
 	button1 = ACCEPT,
@@ -132,32 +136,55 @@ StaticPopupDialogs["Coinscry_BUY_QTY"] = {
 	timeout = 0,
 	whileDead = 1,
 	hideOnEscape = 1,
-	enterClicksFirstButton = 1, -- modern WoW handles Enter -> button1 automatically
+	-- enterClicksFirstButton isn't honored on every classic-derived StaticPopup
+	-- fork; EditBoxOnEnterPressed below is the explicit fallback.
+	enterClicksFirstButton = 1,
 	OnShow = function(self)
-		local row = self.data
+		local data = self.data
+		local row = data and data.row
 		local default = (row and row.stackCount) or 1
 		if row and row.numAvailable and row.numAvailable > 0 then
 			default = math.min(default, row.numAvailable)
 		end
 		local eb = PopupEditBox(self)
 		if not eb then return end
-		eb:SetText(tostring(default))
 		eb:SetNumeric(true)
+		eb:SetText(tostring(default))
 		eb:HighlightText()
 		eb:SetFocus()
 	end,
 	OnAccept = function(self)
-		local row = self.data
-		if not row then return end
+		local data = self.data
+		local row = data and data.row
+		if not row or not row.index then return end
 		local eb = PopupEditBox(self)
 		local qty = tonumber((eb and eb:GetText()) or "")
 		if not qty or qty < 1 then return end
-		if row.numAvailable and row.numAvailable > 0 then
-			qty = math.min(qty, row.numAvailable)
+
+		-- Verify the merchant slot still holds the item we right-clicked. If
+		-- MERCHANT_UPDATE fired between right-click and accept (e.g. an item
+		-- limit refreshed, an inventory event from another source), the row
+		-- objects may have been wiped and the slot at row.index may now hold
+		-- something else. Bail before spending gold on the wrong item.
+		local currentLink = GetMerchantItemLink(row.index)
+		if data.link and currentLink and currentLink ~= data.link then
+			print("|cff66ccffCoinscry|r: vendor inventory changed; purchase cancelled. Re-select the item.")
+			return
+		end
+
+		-- Re-read numAvailable for the cap rather than trusting the snapshot
+		-- — same race-window concern.
+		local _, _, _, _, liveAvailable = GetMerchantItemInfo(row.index)
+		if liveAvailable and liveAvailable > 0 then
+			qty = math.min(qty, liveAvailable)
 		end
 		BuyRow(row, qty)
 	end,
 	EditBoxOnEscapePressed = function(self) self:GetParent():Hide() end,
+	EditBoxOnEnterPressed = function(self)
+		-- Explicit submit; some StaticPopup forks ignore enterClicksFirstButton.
+		StaticPopup_OnClick(self:GetParent(), 1)
+	end,
 }
 
 local function CreateRow(parent, i, anchorTo)
@@ -228,8 +255,12 @@ local function CreateRow(parent, i, anchorTo)
 		if not self.dataRow then return end
 		if btn == "RightButton" then
 			local label = (self.dataRow.link or self.dataRow.name or "?")
-			local dialog = StaticPopup_Show("Coinscry_BUY_QTY", label)
-			if dialog then dialog.data = self.dataRow end
+			-- Pass data as the 4th arg so it's available in OnShow (which
+			-- StaticPopup_Show invokes synchronously). Capture the current
+			-- itemLink as a fingerprint so OnAccept can detect inventory
+			-- reshuffles that would otherwise have us buy the wrong slot.
+			local popupData = { row = self.dataRow, link = self.dataRow.link }
+			StaticPopup_Show("Coinscry_BUY_QTY", label, nil, popupData)
 			return
 		end
 		if IsShiftKeyDown() then
