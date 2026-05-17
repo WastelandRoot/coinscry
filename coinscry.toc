@@ -2,7 +2,7 @@
 ## Title: Coinscry
 ## Notes: Vendor browsing filters — quality, class, item-level, can-use, and (with TSM) group. Best paired with TradeSkillMaster.
 ## Author: wastelandroot
-## Version: 0.5.3
+## Version: 0.5.4
 ## IconTexture: Interface\AddOns\coinscry\Media\Logo64
 ## X-Category: Auctions
 ## X-License: MIT
